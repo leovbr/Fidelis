@@ -1,1157 +1,1052 @@
 /* =========================================================
-   FIDELIS — APP.JS
-   Core interface & media handling
+   FIDELIS - MAIN APPLICATION
    Enhance. Don't Change.
-========================================================= */
+   ========================================================= */
 
-"use strict";
+(function () {
+    "use strict";
 
+    let currentMode = "photo";
+    let selectedFile = null;
+    let selectedQuality = "standard";
 
-/* =========================================================
-   ELEMENTS
-========================================================= */
+    let currentPreviewURL = null;
+    let enhancedURL = null;
 
-const fileInput = document.getElementById("fileInput");
-
-const uploadBox = document.getElementById("uploadBox");
-const uploadButton = document.getElementById("uploadButton");
-
-const uploadTitle = document.getElementById("uploadTitle");
-const uploadDescription = document.getElementById("uploadDescription");
-const uploadLimit = document.getElementById("uploadLimit");
-
-const photoMode = document.getElementById("photoMode");
-const videoMode = document.getElementById("videoMode");
-
-const previewSection = document.getElementById("previewSection");
-const mediaPreview = document.getElementById("mediaPreview");
-
-const fileName = document.getElementById("fileName");
-const removeButton = document.getElementById("removeButton");
-
-const enhancementOptions =
-    document.querySelectorAll(".quality-option");
-
-const enhanceButton =
-    document.getElementById("enhanceButton");
-
-const processingSection =
-    document.getElementById("processingSection");
-
-const progressBar =
-    document.getElementById("progressBar");
-
-const progressPercent =
-    document.getElementById("progressPercent");
-
-const processingText =
-    document.getElementById("processingText");
-
-const resultSection =
-    document.getElementById("resultSection");
-
-const resultPreview =
-    document.getElementById("resultPreview");
-
-const resultQuality =
-    document.getElementById("resultQuality");
-
-const downloadButton =
-    document.getElementById("downloadButton");
-
-const newFileButton =
-    document.getElementById("newFileButton");
-
-const vipButton =
-    document.getElementById("vipButton");
-
-const upgradeButton =
-    document.getElementById("upgradeButton");
-
-const vipModal =
-    document.getElementById("vipModal");
-
-const modalOverlay =
-    document.getElementById("modalOverlay");
-
-const modalClose =
-    document.getElementById("modalClose");
+    let processingTimer = null;
 
 
-/* =========================================================
-   APPLICATION STATE
-========================================================= */
+    /* =====================================================
+       DOM
+       ===================================================== */
 
-let currentMode = "photo";
+    const fileInput =
+        document.getElementById("fileInput");
 
-let selectedFile = null;
+    const uploadBox =
+        document.getElementById("uploadBox");
 
-let selectedQuality = "standard";
+    const uploadButton =
+        document.getElementById("uploadButton");
 
-let currentObjectURL = null;
+    const uploadTitle =
+        document.getElementById("uploadTitle");
 
-let enhancedObjectURL = null;
+    const uploadDescription =
+        document.getElementById("uploadDescription");
 
-let processingTimer = null;
+    const uploadLimit =
+        document.getElementById("uploadLimit");
+
+    const photoMode =
+        document.getElementById("photoMode");
+
+    const videoMode =
+        document.getElementById("videoMode");
+
+    const previewSection =
+        document.getElementById("previewSection");
+
+    const mediaPreview =
+        document.getElementById("mediaPreview");
+
+    const fileName =
+        document.getElementById("fileName");
+
+    const removeButton =
+        document.getElementById("removeButton");
+
+    const qualityOptions =
+        document.querySelectorAll(".quality-option");
+
+    const enhanceButton =
+        document.getElementById("enhanceButton");
+
+    const processingSection =
+        document.getElementById("processingSection");
+
+    const progressBar =
+        document.getElementById("progressBar");
+
+    const progressPercent =
+        document.getElementById("progressPercent");
+
+    const processingText =
+        document.getElementById("processingText");
+
+    const resultSection =
+        document.getElementById("resultSection");
+
+    const resultPreview =
+        document.getElementById("resultPreview");
+
+    const resultQuality =
+        document.getElementById("resultQuality");
+
+    const downloadButton =
+        document.getElementById("downloadButton");
+
+    const newFileButton =
+        document.getElementById("newFileButton");
+
+    const vipButton =
+        document.getElementById("vipButton");
+
+    const upgradeButton =
+        document.getElementById("upgradeButton");
+
+    const vipModal =
+        document.getElementById("vipModal");
+
+    const modalOverlay =
+        document.getElementById("modalOverlay");
+
+    const modalClose =
+        document.getElementById("modalClose");
 
 
-/* =========================================================
-   INITIALIZATION
-========================================================= */
+    /* =====================================================
+       INITIAL STATE
+       ===================================================== */
 
-function init() {
+    if (previewSection) {
+        previewSection.classList.add("hidden");
+    }
 
-    setMode("photo");
+    if (processingSection) {
+        processingSection.classList.add("hidden");
+    }
 
-    resetApplication();
-
-    setupEvents();
-
-}
-
-
-/* =========================================================
-   EVENT SETUP
-========================================================= */
-
-function setupEvents() {
-
-    /* -------------------------------
-       MODE
-    -------------------------------- */
-
-    photoMode.addEventListener("click", () => {
-        setMode("photo");
-    });
+    if (resultSection) {
+        resultSection.classList.add("hidden");
+    }
 
 
-    videoMode.addEventListener("click", () => {
-        setMode("video");
-    });
+    /* =====================================================
+       MODE SWITCH
+       ===================================================== */
+
+    if (photoMode) {
+
+        photoMode.addEventListener(
+            "click",
+            () => setMode("photo")
+        );
+
+    }
 
 
-    /* -------------------------------
-       UPLOAD
-    -------------------------------- */
+    if (videoMode) {
 
-    uploadButton.addEventListener("click", (event) => {
+        videoMode.addEventListener(
+            "click",
+            () => setMode("video")
+        );
 
-        event.stopPropagation();
-
-        fileInput.click();
-
-    });
+    }
 
 
-    uploadBox.addEventListener("click", () => {
+    function setMode(mode) {
 
-        if (!selectedFile) {
-            fileInput.click();
+        currentMode = mode;
+
+        resetCurrentFile();
+
+        if (photoMode) {
+            photoMode.classList.toggle(
+                "active",
+                mode === "photo"
+            );
         }
 
-    });
-
-
-    fileInput.addEventListener("change", (event) => {
-
-        const file = event.target.files[0];
-
-        if (file) {
-            handleFile(file);
+        if (videoMode) {
+            videoMode.classList.toggle(
+                "active",
+                mode === "video"
+            );
         }
 
-    });
 
+        if (mode === "photo") {
 
-    /* -------------------------------
-       DRAG & DROP
-    -------------------------------- */
-
-    uploadBox.addEventListener("dragover", (event) => {
-
-        event.preventDefault();
-
-        uploadBox.classList.add("dragging");
-
-    });
-
-
-    uploadBox.addEventListener("dragleave", () => {
-
-        uploadBox.classList.remove("dragging");
-
-    });
-
-
-    uploadBox.addEventListener("drop", (event) => {
-
-        event.preventDefault();
-
-        uploadBox.classList.remove("dragging");
-
-        const file =
-            event.dataTransfer.files[0];
-
-        if (file) {
-            handleFile(file);
-        }
-
-    });
-
-
-    /* -------------------------------
-       REMOVE
-    -------------------------------- */
-
-    removeButton.addEventListener(
-        "click",
-        resetApplication
-    );
-
-
-    /* -------------------------------
-       QUALITY
-    -------------------------------- */
-
-    enhancementOptions.forEach((option) => {
-
-        option.addEventListener("click", () => {
-
-            const quality =
-                option.dataset.quality;
-
-            if (quality === "ultra") {
-
-                openVipModal();
-
-                return;
-
+            if (uploadTitle) {
+                uploadTitle.textContent =
+                    "Drop your photo here";
             }
 
-            enhancementOptions.forEach((item) => {
+            if (uploadDescription) {
+                uploadDescription.textContent =
+                    "or click to browse from your device";
+            }
 
-                item.classList.remove("active");
+            if (uploadLimit) {
+                uploadLimit.textContent =
+                    "JPG, JPEG, PNG, WEBP • Max 20MB";
+            }
 
-            });
+            if (fileInput) {
+                fileInput.accept =
+                    "image/jpeg,image/png,image/webp";
+            }
 
-            option.classList.add("active");
+        } else {
 
-            selectedQuality = quality;
+            if (uploadTitle) {
+                uploadTitle.textContent =
+                    "Drop your video here";
+            }
 
-        });
+            if (uploadDescription) {
+                uploadDescription.textContent =
+                    "or click to browse from your device";
+            }
 
-    });
+            if (uploadLimit) {
+                uploadLimit.textContent =
+                    "MP4, WEBM, MOV • Max 200MB";
+            }
 
+            if (fileInput) {
+                fileInput.accept =
+                    "video/mp4,video/webm,video/quicktime";
+            }
 
-    /* -------------------------------
-       ENHANCE
-    -------------------------------- */
-
-    enhanceButton.addEventListener(
-        "click",
-        startEnhancement
-    );
-
-
-    /* -------------------------------
-       DOWNLOAD
-    -------------------------------- */
-
-    downloadButton.addEventListener(
-        "click",
-        downloadEnhancedMedia
-    );
-
-
-    /* -------------------------------
-       NEW FILE
-    -------------------------------- */
-
-    newFileButton.addEventListener(
-        "click",
-        resetApplication
-    );
-
-
-    /* -------------------------------
-       VVIP
-    -------------------------------- */
-
-    vipButton.addEventListener(
-        "click",
-        openVipModal
-    );
-
-
-    upgradeButton.addEventListener(
-        "click",
-        openVipModal
-    );
-
-
-    modalClose.addEventListener(
-        "click",
-        closeVipModal
-    );
-
-
-    modalOverlay.addEventListener(
-        "click",
-        closeVipModal
-    );
-
-
-    document.addEventListener(
-        "keydown",
-        handleKeyboard
-    );
-
-}
-
-
-/* =========================================================
-   MODE SWITCHING
-========================================================= */
-
-function setMode(mode) {
-
-    currentMode = mode;
-
-    photoMode.classList.toggle(
-        "active",
-        mode === "photo"
-    );
-
-    videoMode.classList.toggle(
-        "active",
-        mode === "video"
-    );
-
-
-    if (mode === "photo") {
-
-        uploadTitle.textContent =
-            "Upload your photo";
-
-        uploadDescription.textContent =
-            "Drop an image here or tap to browse";
-
-        uploadLimit.textContent =
-            "JPG, PNG, WEBP";
-
-        fileInput.accept =
-            "image/jpeg,image/png,image/webp";
+        }
 
     }
 
 
-    if (mode === "video") {
+    /* =====================================================
+       FILE PICKER
+       ===================================================== */
 
-        uploadTitle.textContent =
-            "Upload your video";
+    if (uploadButton) {
 
-        uploadDescription.textContent =
-            "Drop a video here or tap to browse";
+        uploadButton.addEventListener(
+            "click",
+            event => {
 
-        uploadLimit.textContent =
-            "MP4, WEBM, MOV";
+                event.stopPropagation();
 
-        fileInput.accept =
-            "video/mp4,video/webm,video/quicktime";
+                if (fileInput) {
+                    fileInput.click();
+                }
 
-    }
-
-
-    resetUploadVisuals();
-
-}
-
-
-/* =========================================================
-   FILE HANDLING
-========================================================= */
-
-function handleFile(file) {
-
-    if (!isValidFile(file)) {
-
-        showUploadError();
-
-        return;
+            }
+        );
 
     }
 
 
-    selectedFile = file;
+    if (uploadBox) {
+
+        uploadBox.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    event.target.closest(
+                        "#uploadButton"
+                    )
+                ) {
+                    return;
+                }
+
+                if (fileInput) {
+                    fileInput.click();
+                }
+
+            }
+        );
 
 
-    cleanupObjectURLs();
+        /* Drag over */
+
+        uploadBox.addEventListener(
+            "dragover",
+            event => {
+
+                event.preventDefault();
+
+                uploadBox.classList.add(
+                    "dragging"
+                );
+
+            }
+        );
 
 
-    currentObjectURL =
-        URL.createObjectURL(file);
+        /* Drag leave */
+
+        uploadBox.addEventListener(
+            "dragleave",
+            event => {
+
+                event.preventDefault();
+
+                uploadBox.classList.remove(
+                    "dragging"
+                );
+
+            }
+        );
 
 
-    showPreview(file);
+        /* Drop */
 
-}
+        uploadBox.addEventListener(
+            "drop",
+            event => {
 
+                event.preventDefault();
 
-/* =========================================================
-   FILE VALIDATION
-========================================================= */
+                uploadBox.classList.remove(
+                    "dragging"
+                );
 
-function isValidFile(file) {
+                const files =
+                    event.dataTransfer.files;
 
-    if (currentMode === "photo") {
+                if (
+                    files &&
+                    files.length > 0
+                ) {
 
-        return file.type.startsWith("image/");
+                    handleFile(files[0]);
+
+                }
+
+            }
+        );
 
     }
 
 
-    if (currentMode === "video") {
+    /* File input */
 
-        return file.type.startsWith("video/");
+    if (fileInput) {
+
+        fileInput.addEventListener(
+            "change",
+            event => {
+
+                const file =
+                    event.target.files[0];
+
+                if (file) {
+                    handleFile(file);
+                }
+
+            }
+        );
 
     }
 
 
-    return false;
+    /* =====================================================
+       FILE VALIDATION
+       ===================================================== */
 
-}
+    function handleFile(file) {
 
-
-/* =========================================================
-   FILE SIZE CHECK
-========================================================= */
-
-function isFileTooLarge(file) {
-
-    const maxSizeMB =
-        currentMode === "photo"
-            ? 20
-            : 200;
-
-    const maxBytes =
-        maxSizeMB * 1024 * 1024;
-
-    return file.size > maxBytes;
-
-}
+        if (!file) {
+            return;
+        }
 
 
-/* =========================================================
-   PREVIEW
-========================================================= */
+        const isPhoto =
+            file.type.startsWith(
+                "image/"
+            );
 
-function showPreview(file) {
+        const isVideo =
+            file.type.startsWith(
+                "video/"
+            );
 
-    if (isFileTooLarge(file)) {
 
-        alert(
-            `This file is too large. Maximum size is ${
+        if (
+            currentMode === "photo" &&
+            !isPhoto
+        ) {
+
+            showError(
+                "Please select an image file."
+            );
+
+            return;
+        }
+
+
+        if (
+            currentMode === "video" &&
+            !isVideo
+        ) {
+
+            showError(
+                "Please select a video file."
+            );
+
+            return;
+        }
+
+
+        const maxSize =
+            currentMode === "photo"
+                ? 20 * 1024 * 1024
+                : 200 * 1024 * 1024;
+
+
+        if (file.size > maxSize) {
+
+            showError(
                 currentMode === "photo"
-                    ? "20 MB"
-                    : "200 MB"
-            }.`
-        );
+                    ? "Photo is larger than 20MB."
+                    : "Video is larger than 200MB."
+            );
 
-        resetApplication();
-
-        return;
-
-    }
+            return;
+        }
 
 
-    mediaPreview.innerHTML = "";
+        selectedFile = file;
 
-
-    fileName.textContent =
-        file.name;
-
-
-    if (currentMode === "photo") {
-
-        const image =
-            document.createElement("img");
-
-        image.src =
-            currentObjectURL;
-
-        image.alt =
-            "Original uploaded image";
-
-        mediaPreview.appendChild(image);
+        showPreview(file);
 
     }
 
 
-    if (currentMode === "video") {
+    /* =====================================================
+       PREVIEW
+       ===================================================== */
 
-        const video =
-            document.createElement("video");
+    function showPreview(file) {
 
-        video.src =
-            currentObjectURL;
-
-        video.controls = true;
-
-        video.playsInline = true;
-
-        video.preload = "metadata";
-
-        mediaPreview.appendChild(video);
-
-    }
+        cleanupURLs();
 
 
-    previewSection.classList.remove(
-        "hidden"
-    );
+        currentPreviewURL =
+            URL.createObjectURL(file);
 
 
-    processingSection.classList.add(
-        "hidden"
-    );
+        if (mediaPreview) {
 
-
-    resultSection.classList.add(
-        "hidden"
-    );
-
-
-    uploadBox.classList.add(
-        "hidden"
-    );
-
-
-    scrollToElement(
-        previewSection
-    );
-
-}
-
-
-/* =========================================================
-   ENHANCEMENT
-========================================================= */
-
-function startEnhancement() {
-
-    if (!selectedFile) {
-
-        alert(
-            "Please upload a file first."
-        );
-
-        return;
-
-    }
-
-
-    if (selectedQuality === "ultra") {
-
-        openVipModal();
-
-        return;
-
-    }
-
-
-    previewSection.classList.add(
-        "hidden"
-    );
-
-
-    resultSection.classList.add(
-        "hidden"
-    );
-
-
-    processingSection.classList.remove(
-        "hidden"
-    );
-
-
-    progressBar.style.width =
-        "0%";
-
-    progressPercent.textContent =
-        "0%";
-
-
-    const messages =
-        currentMode === "photo"
-            ? [
-                "Analyzing image details...",
-                "Improving clarity...",
-                "Reducing compression artifacts...",
-                "Preserving facial details...",
-                "Preparing enhanced image..."
-            ]
-            : [
-                "Analyzing video...",
-                "Optimizing frames...",
-                "Improving clarity...",
-                "Preserving facial details...",
-                "Preparing enhanced video..."
-            ];
-
-
-    let progress = 0;
-
-    let messageIndex = 0;
-
-
-    processingText.textContent =
-        messages[0];
-
-
-    clearInterval(
-        processingTimer
-    );
-
-
-    processingTimer =
-        setInterval(() => {
-
-            progress +=
-                Math.floor(
-                    Math.random() * 7
-                ) + 3;
-
-
-            if (progress > 100) {
-                progress = 100;
-            }
-
-
-            progressBar.style.width =
-                `${progress}%`;
-
-
-            progressPercent.textContent =
-                `${progress}%`;
+            mediaPreview.innerHTML = "";
 
 
             if (
-                progress > 20 &&
-                messageIndex < 1
+                currentMode === "photo"
             ) {
 
-                messageIndex = 1;
+                const img =
+                    document.createElement(
+                        "img"
+                    );
 
-                processingText.textContent =
-                    messages[messageIndex];
+                img.src =
+                    currentPreviewURL;
 
-            }
+                img.alt =
+                    "Selected photo";
 
-
-            if (
-                progress > 40 &&
-                messageIndex < 2
-            ) {
-
-                messageIndex = 2;
-
-                processingText.textContent =
-                    messages[messageIndex];
-
-            }
-
-
-            if (
-                progress > 65 &&
-                messageIndex < 3
-            ) {
-
-                messageIndex = 3;
-
-                processingText.textContent =
-                    messages[messageIndex];
-
-            }
-
-
-            if (
-                progress > 85 &&
-                messageIndex < 4
-            ) {
-
-                messageIndex = 4;
-
-                processingText.textContent =
-                    messages[messageIndex];
-
-            }
-
-
-            if (progress >= 100) {
-
-                clearInterval(
-                    processingTimer
+                mediaPreview.appendChild(
+                    img
                 );
 
 
-                setTimeout(
-                    showResult,
-                    450
+            } else {
+
+                const video =
+                    document.createElement(
+                        "video"
+                    );
+
+                video.src =
+                    currentPreviewURL;
+
+                video.controls =
+                    true;
+
+                video.playsInline =
+                    true;
+
+                mediaPreview.appendChild(
+                    video
                 );
 
             }
 
-        }, 160);
-
-}
+        }
 
 
-/* =========================================================
-   RESULT
-========================================================= */
+        if (fileName) {
 
-function showResult() {
+            fileName.textContent =
+                file.name;
 
-    processingSection.classList.add(
-        "hidden"
-    );
+        }
 
 
-    resultSection.classList.remove(
-        "hidden"
-    );
+        if (previewSection) {
+
+            previewSection.classList.remove(
+                "hidden"
+            );
+
+        }
 
 
-    resultPreview.innerHTML = "";
+        if (processingSection) {
+
+            processingSection.classList.add(
+                "hidden"
+            );
+
+        }
 
 
-    if (!selectedFile) {
-        return;
+        if (resultSection) {
+
+            resultSection.classList.add(
+                "hidden"
+            );
+
+        }
+
     }
 
 
-    /*
-     * V1 FALLBACK
-     *
-     * At this stage the application uses
-     * the original media as a visual result.
-     *
-     * Real super-resolution processing will
-     * be connected in the next processing
-     * modules.
-     */
+    /* =====================================================
+       REMOVE FILE
+       ===================================================== */
 
-    enhancedObjectURL =
-        currentObjectURL;
+    if (removeButton) {
 
-
-    if (currentMode === "photo") {
-
-        const image =
-            document.createElement("img");
-
-        image.src =
-            enhancedObjectURL;
-
-        image.alt =
-            "Enhanced image";
-
-        resultPreview.appendChild(
-            image
+        removeButton.addEventListener(
+            "click",
+            resetCurrentFile
         );
 
     }
 
 
-    if (currentMode === "video") {
+    function resetCurrentFile() {
 
-        const video =
-            document.createElement("video");
+        selectedFile = null;
 
-        video.src =
-            enhancedObjectURL;
+        cleanupURLs();
 
-        video.controls = true;
 
-        video.playsInline = true;
+        if (fileInput) {
+            fileInput.value = "";
+        }
 
-        resultPreview.appendChild(
-            video
-        );
+
+        if (mediaPreview) {
+            mediaPreview.innerHTML = "";
+        }
+
+
+        if (fileName) {
+            fileName.textContent = "";
+        }
+
+
+        if (previewSection) {
+            previewSection.classList.add(
+                "hidden"
+            );
+        }
+
+
+        if (processingSection) {
+            processingSection.classList.add(
+                "hidden"
+            );
+        }
+
+
+        if (resultSection) {
+            resultSection.classList.add(
+                "hidden"
+            );
+        }
+
+
+        resetProgress();
 
     }
 
 
-    resultQuality.textContent =
-        selectedQuality === "high"
-            ? "High"
-            : "2×";
+    /* =====================================================
+       QUALITY
+       ===================================================== */
 
+    qualityOptions.forEach(
+        option => {
 
-    scrollToElement(
-        resultSection
-    );
+            option.addEventListener(
+                "click",
+                () => {
 
-}
+                    const quality =
+                        option.dataset.quality;
 
+                    if (!quality) {
+                        return;
+                    }
 
-/* =========================================================
-   DOWNLOAD
-========================================================= */
 
-function downloadEnhancedMedia() {
+                    /*
+                     * Ultra = VVIP.
+                     */
 
-    if (!enhancedObjectURL) {
+                    if (
+                        quality === "ultra"
+                    ) {
 
-        alert(
-            "No enhanced media available."
-        );
+                        openVIPModal();
 
-        return;
+                        return;
+                    }
 
-    }
 
+                    selectedQuality =
+                        quality;
 
-    const extension =
-        currentMode === "photo"
-            ? getImageExtension(selectedFile)
-            : getVideoExtension(selectedFile);
 
+                    qualityOptions.forEach(
+                        item => {
 
-    const baseName =
-        selectedFile.name
-            .replace(/\.[^/.]+$/, "");
+                            item.classList.toggle(
+                                "active",
+                                item === option
+                            );
 
+                        }
+                    );
 
-    const link =
-        document.createElement("a");
-
-
-    link.href =
-        enhancedObjectURL;
-
-
-    link.download =
-        `${baseName}_fidelis.${extension}`;
-
-
-    document.body.appendChild(
-        link
-    );
-
-
-    link.click();
-
-
-    link.remove();
-
-}
-
-
-/* =========================================================
-   EXTENSIONS
-========================================================= */
-
-function getImageExtension(file) {
-
-    if (!file) {
-        return "jpg";
-    }
-
-
-    if (
-        file.type ===
-        "image/png"
-    ) {
-        return "png";
-    }
-
-
-    if (
-        file.type ===
-        "image/webp"
-    ) {
-        return "webp";
-    }
-
-
-    return "jpg";
-
-}
-
-
-function getVideoExtension(file) {
-
-    if (!file) {
-        return "mp4";
-    }
-
-
-    if (
-        file.type ===
-        "video/webm"
-    ) {
-        return "webm";
-    }
-
-
-    return "mp4";
-
-}
-
-
-/* =========================================================
-   RESET
-========================================================= */
-
-function resetApplication() {
-
-    clearInterval(
-        processingTimer
-    );
-
-
-    cleanupObjectURLs();
-
-
-    selectedFile = null;
-
-    selectedQuality =
-        "standard";
-
-
-    fileInput.value = "";
-
-
-    previewSection.classList.add(
-        "hidden"
-    );
-
-
-    processingSection.classList.add(
-        "hidden"
-    );
-
-
-    resultSection.classList.add(
-        "hidden"
-    );
-
-
-    uploadBox.classList.remove(
-        "hidden"
-    );
-
-
-    progressBar.style.width =
-        "0%";
-
-
-    progressPercent.textContent =
-        "0%";
-
-
-    mediaPreview.innerHTML = "";
-
-    resultPreview.innerHTML = "";
-
-
-    enhancementOptions.forEach(
-        (option) => {
-
-            option.classList.remove(
-                "active"
+                }
             );
 
         }
     );
 
 
-    const standardOption =
-        document.querySelector(
-            '[data-quality="standard"]'
+    /* =====================================================
+       ENHANCE BUTTON
+       ===================================================== */
+
+    if (enhanceButton) {
+
+        enhanceButton.addEventListener(
+            "click",
+            startEnhancement
+        );
+
+    }
+
+
+    async function startEnhancement() {
+
+        if (!selectedFile) {
+
+            showError(
+                "Please upload a file first."
+            );
+
+            return;
+        }
+
+
+        if (processingSection) {
+
+            processingSection.classList.remove(
+                "hidden"
+            );
+
+        }
+
+
+        if (resultSection) {
+
+            resultSection.classList.add(
+                "hidden"
+            );
+
+        }
+
+
+        if (enhanceButton) {
+
+            enhanceButton.disabled =
+                true;
+
+        }
+
+
+        setProgress(
+            5,
+            "Preparing media..."
         );
 
 
-    if (standardOption) {
+        try {
 
-        standardOption.classList.add(
-            "active"
+            let result;
+
+
+            if (
+                currentMode === "photo"
+            ) {
+
+                setProgress(
+                    15,
+                    "Analyzing image details..."
+                );
+
+
+                await delay(300);
+
+
+                setProgress(
+                    30,
+                    "Upscaling image..."
+                );
+
+
+                result =
+                    await FidelisImage.enhance(
+                        selectedFile,
+                        selectedQuality
+                    );
+
+
+                setProgress(
+                    70,
+                    "Improving clarity..."
+                );
+
+
+                await delay(300);
+
+
+                setProgress(
+                    88,
+                    "Preserving facial details..."
+                );
+
+
+                await delay(300);
+
+
+                setProgress(
+                    100,
+                    "Enhancement complete."
+                );
+
+
+            } else {
+
+                setProgress(
+                    10,
+                    "Analyzing video..."
+                );
+
+
+                result =
+                    await FidelisVideo.enhance(
+                        selectedFile,
+                        selectedQuality,
+                        percentage => {
+
+                            const value =
+                                Math.max(
+                                    10,
+                                    Math.min(
+                                        99,
+                                        percentage
+                                    )
+                                );
+
+
+                            setProgress(
+                                value,
+                                "Enhancing video frames..."
+                            );
+
+                        }
+                    );
+
+
+                setProgress(
+                    100,
+                    "Enhancement complete."
+                );
+
+            }
+
+
+            /*
+             * Simpan hasil.
+             */
+
+            if (enhancedURL) {
+
+                URL.revokeObjectURL(
+                    enhancedURL
+                );
+
+            }
+
+
+            enhancedURL =
+                URL.createObjectURL(
+                    result.blob
+                );
+
+
+            showResult(
+                result
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "FIDELIS enhancement error:",
+                error
+            );
+
+
+            showError(
+                error.message ||
+                "Enhancement failed. Please try again."
+            );
+
+
+            if (processingSection) {
+
+                processingSection.classList.add(
+                    "hidden"
+                );
+
+            }
+
+        } finally {
+
+            if (enhanceButton) {
+
+                enhanceButton.disabled =
+                    false;
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       RESULT
+       ===================================================== */
+
+    function showResult(result) {
+
+        if (!resultPreview) {
+            return;
+        }
+
+
+        resultPreview.innerHTML = "";
+
+
+        if (
+            currentMode === "photo"
+        ) {
+
+            const image =
+                document.createElement(
+                    "img"
+                );
+
+            image.src =
+                enhancedURL;
+
+            image.alt =
+                "FIDELIS enhanced image";
+
+            resultPreview.appendChild(
+                image
+            );
+
+
+        } else {
+
+            const video =
+                document.createElement(
+                    "video"
+                );
+
+            video.src =
+                enhancedURL;
+
+            video.controls =
+                true;
+
+            video.playsInline =
+                true;
+
+            resultPreview.appendChild(
+                video
+            );
+
+        }
+
+
+        if (resultQuality) {
+
+            if (
+                currentMode === "photo"
+            ) {
+
+                resultQuality.textContent =
+                    `${result.width} × ${result.height}`;
+
+            } else {
+
+                resultQuality.textContent =
+                    `${result.width} × ${result.height}`;
+
+            }
+
+        }
+
+
+        if (resultSection) {
+
+            resultSection.classList.remove(
+                "hidden"
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       DOWNLOAD
+       ===================================================== */
+
+    if (downloadButton) {
+
+        downloadButton.addEventListener(
+            "click",
+            downloadResult
         );
 
     }
 
 
-    resetUploadVisuals();
+    function downloadResult() {
 
-}
+        if (
+            !selectedFile ||
+            !enhancedURL
+        ) {
 
+            return;
 
-/* =========================================================
-   RESET UPLOAD VISUALS
-========================================================= */
-
-function resetUploadVisuals() {
-
-    uploadBox.classList.remove(
-        "dragging"
-    );
+        }
 
 
-    if (currentMode === "photo") {
+        /*
+         * Fetch blob dari object URL.
+         */
 
-        uploadTitle.textContent =
-            "Upload your photo";
+        fetch(enhancedURL)
+            .then(
+                response =>
+                    response.blob()
+            )
+            .then(blob => {
 
-        uploadDescription.textContent =
-            "Drop an image here or tap to browse";
+                if (
+                    currentMode === "photo"
+                ) {
 
-        uploadLimit.textContent =
-            "JPG, PNG, WEBP";
+                    FidelisImage.download(
+                        blob,
+                        selectedFile.name
+                    );
+
+                } else {
+
+                    FidelisVideo.download(
+                        blob,
+                        selectedFile.name
+                    );
+
+                }
+
+            })
+            .catch(error => {
+
+                console.error(
+                    "Download failed:",
+                    error
+                );
+
+                showError(
+                    "Unable to download the result."
+                );
+
+            });
 
     }
 
 
-    if (currentMode === "video") {
+    /* =====================================================
+       NEW FILE
+       ===================================================== */
 
-        uploadTitle.textContent =
-            "Upload your video";
+    if (newFileButton) {
 
-        uploadDescription.textContent =
-            "Drop a video here or tap to browse";
-
-        uploadLimit.textContent =
-            "MP4, WEBM, MOV";
+        newFileButton.addEventListener(
+            "click",
+            resetCurrentFile
+        );
 
     }
 
-}
 
+    /* =====================================================
+       PROGRESS
+       ===================================================== */
 
-/* =========================================================
-   OBJECT URL CLEANUP
-========================================================= */
-
-function cleanupObjectURLs() {
-
-    /*
-     * Don't revoke currentObjectURL here if it
-     * is still being used by the current media.
-     *
-     * It will be revoked when a new file is loaded
-     * or the application is reset.
-     */
-
-}
-
-
-/* =========================================================
-   UPLOAD ERROR
-========================================================= */
-
-function showUploadError() {
-
-    const oldTitle =
-        uploadTitle.textContent;
-
-
-    uploadTitle.textContent =
-        "Unsupported file";
-
-
-    uploadDescription.textContent =
-        currentMode === "photo"
-            ? "Please choose JPG, PNG or WEBP"
-            : "Please choose MP4, WEBM or MOV";
-
-
-    setTimeout(() => {
-
-        uploadTitle.textContent =
-            oldTitle;
-
-        setMode(currentMode);
-
-    }, 2200);
-
-}
-
-
-/* =========================================================
-   VVIP MODAL
-========================================================= */
-
-function openVipModal() {
-
-    vipModal.classList.remove(
-        "hidden"
-    );
-
-
-    document.body.style.overflow =
-        "hidden";
-
-}
-
-
-function closeVipModal() {
-
-    vipModal.classList.add(
-        "hidden"
-    );
-
-
-    document.body.style.overflow =
-        "";
-
-}
-
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-function handleKeyboard(event) {
-
-    if (
-        event.key === "Escape" &&
-        !vipModal.classList.contains(
-            "hidden"
-        )
+    function setProgress(
+        percentage,
+        message
     ) {
 
-        closeVipModal();
-
-    }
-
-}
-
-
-/* =========================================================
-   SCROLL
-========================================================= */
-
-function scrollToElement(element) {
-
-    if (!element) {
-        return;
-    }
+        const value =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    percentage
+                )
+            );
 
 
-    setTimeout(() => {
+        if (progressBar) {
 
-        element.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+            progressBar.style.width =
+                `${value}%`;
 
-    }, 100);
-
-}
+        }
 
 
-/* =========================================================
-   START
-========================================================= */
+        if (progressPercent) {
 
-init();
+  
