@@ -1,334 +1,481 @@
 (function () {
+
   "use strict";
 
-  const FidelisTileEngine = {
-    version: "1.0.0",
+  const TileEngine = {
 
-    defaultTileSize: 512,
-    defaultOverlap: 32,
+    getRecommendedSettings(width, height) {
 
-    calculateGrid(width, height, tileSize, overlap) {
-      const step = Math.max(
-        1,
-        tileSize - overlap * 2
-      );
+      const pixels = width * height;
+      const memory = Number(navigator.deviceMemory || 4);
 
-      const columns =
-        Math.ceil((width - overlap) / step);
+      let tileSize = 512;
+      let overlap = 32;
 
-      const rows =
-        Math.ceil((height - overlap) / step);
+      if (memory <= 2) {
+        tileSize = 256;
+        overlap = 24;
+      } else if (memory <= 4) {
+        tileSize = 384;
+        overlap = 32;
+      } else if (pixels > 20_000_000) {
+        tileSize = 384;
+        overlap = 32;
+      }
 
       return {
-        columns,
-        rows,
-        total: columns * rows
+        tileSize,
+        overlap
       };
+
     },
 
-    createTiles(
-      canvas,
-      options = {}
-    ) {
+
+    async process(canvas, processor, options = {}) {
+
+      if (!canvas) {
+        throw new Error("FIDELIS: Tile source missing.");
+      }
+
+      if (typeof processor !== "function") {
+        throw new Error("FIDELIS: Tile processor missing.");
+      }
+
       const tileSize =
-        options.tileSize ||
-        this.defaultTileSize;
+        Number(
+          options.tileSize ||
+          this.getRecommendedSettings(
+            canvas.width,
+            canvas.height
+          ).tileSize
+        );
 
       const overlap =
-        options.overlap ??
-        this.defaultOverlap;
+        Number(
+          options.overlap ||
+          this.getRecommendedSettings(
+            canvas.width,
+            canvas.height
+          ).overlap
+        );
 
       const width = canvas.width;
       const height = canvas.height;
 
-      const tiles = [];
+      /*
+       Small image:
+       process directly.
+      */
 
-      let index = 0;
+      if (
+        width <= tileSize &&
+        height <= tileSize
+      ) {
+
+        return processor(
+          canvas,
+          {
+            x: 0,
+            y: 0,
+            width,
+            height,
+            index: 0,
+            total: 1
+          }
+        );
+
+      }
+
+      /*
+       Determine grid.
+      */
+
+      const step =
+        Math.max(
+          1,
+          tileSize - overlap * 2
+        );
+
+      const tiles = [];
 
       for (
         let y = 0;
         y < height;
-        y += tileSize - overlap * 2
+        y += step
       ) {
+
         for (
           let x = 0;
           x < width;
-          x += tileSize - overlap * 2
+          x += step
         ) {
-          const left = Math.max(
-            0,
-            x - overlap
-          );
 
-          const top = Math.max(
-            0,
-            y - overlap
-          );
+          const left =
+            Math.max(
+              0,
+              x - overlap
+            );
 
-          const right = Math.min(
-            width,
-            x + tileSize + overlap
-          );
+          const top =
+            Math.max(
+              0,
+              y - overlap
+            );
 
-          const bottom = Math.min(
-            height,
-            y + tileSize + overlap
-          );
+          const right =
+            Math.min(
+              width,
+              x + tileSize
+            );
 
-          const tileWidth =
-            right - left;
-
-          const tileHeight =
-            bottom - top;
-
-          const tileCanvas =
-            document.createElement("canvas");
-
-          tileCanvas.width = tileWidth;
-          tileCanvas.height = tileHeight;
-
-          const ctx =
-            tileCanvas.getContext("2d", {
-              willReadFrequently: true
-            });
-
-          ctx.drawImage(
-            canvas,
-            left,
-            top,
-            tileWidth,
-            tileHeight,
-            0,
-            0,
-            tileWidth,
-            tileHeight
-          );
+          const bottom =
+            Math.min(
+              height,
+              y + tileSize
+            );
 
           tiles.push({
-            index,
-
             x: left,
             y: top,
-
-            width: tileWidth,
-            height: tileHeight,
-
-            canvas: tileCanvas
+            width: right - left,
+            height: bottom - top
           });
 
-          index++;
-        }
-      }
-
-      return tiles;
-    },
-
-    async process(
-      canvas,
-      processor,
-      options = {}
-    ) {
-      if (!(canvas instanceof HTMLCanvasElement)) {
-        throw new Error(
-          "TileEngine membutuhkan HTMLCanvasElement."
-        );
-      }
-
-      if (typeof processor !== "function") {
-        throw new Error(
-          "TileEngine membutuhkan processor function."
-        );
-      }
-
-      const tileSize =
-        options.tileSize ||
-        this.defaultTileSize;
-
-      const overlap =
-        options.overlap ??
-        this.defaultOverlap;
-
-      const scale =
-        options.scale || 1;
-
-      const tiles =
-        this.createTiles(
-          canvas,
-          {
-            tileSize,
-            overlap
-          }
-        );
-
-      const outputWidth =
-        Math.round(canvas.width * scale);
-
-      const outputHeight =
-        Math.round(canvas.height * scale);
-
-      const output =
-        document.createElement("canvas");
-
-      output.width = outputWidth;
-      output.height = outputHeight;
-
-      const outputCtx =
-        output.getContext("2d");
-
-      if (!outputCtx) {
-        throw new Error(
-          "Tidak bisa membuat output canvas."
-        );
-      }
-
-      const total = tiles.length;
-
-      for (let i = 0; i < total; i++) {
-        const tile = tiles[i];
-
-        const processed =
-          await processor(
-            tile.canvas,
-            tile,
-            i,
-            total
-          );
-
-        if (!(processed instanceof HTMLCanvasElement)) {
-          throw new Error(
-            "Processor tile harus mengembalikan canvas."
-          );
         }
 
-        /*
-         * Posisi tile mengikuti koordinat gambar asli.
-         */
-        const drawX =
-          Math.round(tile.x * scale);
-
-        const drawY =
-          Math.round(tile.y * scale);
-
-        const drawWidth =
-          Math.round(tile.width * scale);
-
-        const drawHeight =
-          Math.round(tile.height * scale);
-
-        outputCtx.drawImage(
-          processed,
-          0,
-          0,
-          processed.width,
-          processed.height,
-          drawX,
-          drawY,
-          drawWidth,
-          drawHeight
-        );
-
-        if (typeof options.onProgress === "function") {
-          options.onProgress({
-            current: i + 1,
-            total,
-            percent:
-              Math.round(
-                ((i + 1) / total) * 100
-              )
-          });
-        }
-
-        /*
-         * Kasih kesempatan browser bernapas
-         * supaya UI tidak freeze total.
-         */
-        await new Promise(resolve => {
-          setTimeout(resolve, 0);
-        });
       }
-
-      return {
-        canvas: output,
-
-        width: output.width,
-        height: output.height,
-
-        tilesProcessed: total,
-
-        tileSize,
-        overlap,
-
-        scale
-      };
-    },
-
-    chooseTileSize(
-      width,
-      height,
-      deviceMemory
-    ) {
-      const memory =
-        Number(deviceMemory) || 4;
-
-      const pixels =
-        width * height;
 
       /*
-       * Device RAM rendah:
-       * gunakan tile kecil.
-       */
-      if (
-        memory <= 2 ||
-        pixels > 12000000
-      ) {
-        return 256;
+       Avoid processing duplicate/contained tiles
+       at the extreme edges.
+      */
+
+      const uniqueTiles = [];
+
+      const seen = new Set();
+
+      for (const tile of tiles) {
+
+        const key =
+          [
+            tile.x,
+            tile.y,
+            tile.width,
+            tile.height
+          ].join(":");
+
+        if (!seen.has(key)) {
+
+          seen.add(key);
+          uniqueTiles.push(tile);
+
+        }
+
       }
 
-      if (
-        memory <= 4 ||
-        pixels > 8000000
+      const total =
+        uniqueTiles.length;
+
+      /*
+       First processed tile determines scale.
+      */
+
+      let outputCanvas = null;
+      let scaleX = 1;
+      let scaleY = 1;
+
+      const processedTiles = [];
+
+      for (
+        let i = 0;
+        i < total;
+        i++
       ) {
-        return 384;
-      }
 
-      if (
-        memory <= 6 ||
-        pixels > 5000000
-      ) {
-        return 512;
-      }
+        const tile =
+          uniqueTiles[i];
 
-      return 768;
-    },
+        const tileCanvas =
+          document.createElement(
+            "canvas"
+          );
 
-    getRecommendedSettings(
-      width,
-      height
-    ) {
-      const memory =
-        navigator.deviceMemory || 4;
+        tileCanvas.width =
+          tile.width;
 
-      const tileSize =
-        this.chooseTileSize(
-          width,
-          height,
-          memory
+        tileCanvas.height =
+          tile.height;
+
+        const tileContext =
+          tileCanvas.getContext(
+            "2d"
+          );
+
+        tileContext.drawImage(
+          canvas,
+          tile.x,
+          tile.y,
+          tile.width,
+          tile.height,
+          0,
+          0,
+          tile.width,
+          tile.height
         );
 
+        /*
+         Progress before inference.
+        */
+
+        if (
+          typeof options.onProgress ===
+          "function"
+        ) {
+
+          options.onProgress(
+            (i / total) * 90,
+            `AI tile ${i + 1}/${total}...`
+          );
+
+        }
+
+        const result =
+          await processor(
+            tileCanvas,
+            {
+              ...tile,
+              index: i,
+              total
+            }
+          );
+
+        if (!result) {
+          throw new Error(
+            `FIDELIS: Tile ${i + 1} returned no result.`
+          );
+        }
+
+        const resultCanvas =
+          result.canvas ||
+          result;
+
+        if (
+          !resultCanvas ||
+          !resultCanvas.width ||
+          !resultCanvas.height
+        ) {
+
+          throw new Error(
+            `FIDELIS: Invalid output tile ${i + 1}.`
+          );
+
+        }
+
+        if (!outputCanvas) {
+
+          scaleX =
+            resultCanvas.width /
+            tile.width;
+
+          scaleY =
+            resultCanvas.height /
+            tile.height;
+
+          outputCanvas =
+            document.createElement(
+              "canvas"
+            );
+
+          outputCanvas.width =
+            Math.round(
+              width * scaleX
+            );
+
+          outputCanvas.height =
+            Math.round(
+              height * scaleY
+            );
+
+        }
+
+        processedTiles.push({
+          source: resultCanvas,
+          tile,
+          scaleX,
+          scaleY
+        });
+
+        /*
+         Release temporary tile references
+         where possible.
+        */
+
+        if (
+          typeof options.onProgress ===
+          "function"
+        ) {
+
+          options.onProgress(
+            ((i + 1) / total) * 90,
+            `Processed tile ${i + 1}/${total}`
+          );
+
+        }
+
+        /*
+         Yield to browser.
+        */
+
+        await new Promise(
+          resolve =>
+            setTimeout(resolve, 0)
+        );
+
+      }
+
+      /*
+       Composite with overlap cropping.
+       */
+
+      const context =
+        outputCanvas.getContext(
+          "2d"
+        );
+
+      context.imageSmoothingEnabled =
+        false;
+
+      for (
+        const item of processedTiles
+      ) {
+
+        const tile =
+          item.tile;
+
+        const source =
+          item.source;
+
+        const sx =
+          tile.x > 0
+            ? overlap * item.scaleX
+            : 0;
+
+        const sy =
+          tile.y > 0
+            ? overlap * item.scaleY
+            : 0;
+
+        const rightEdge =
+          tile.x + tile.width >= width;
+
+        const bottomEdge =
+          tile.y + tile.height >= height;
+
+        const sourceWidth =
+          source.width -
+          sx -
+          (
+            rightEdge
+              ? 0
+              : overlap * item.scaleX
+          );
+
+        const sourceHeight =
+          source.height -
+          sy -
+          (
+            bottomEdge
+              ? 0
+              : overlap * item.scaleY
+          );
+
+        const destinationX =
+          Math.round(
+            tile.x * item.scaleX +
+            (
+              tile.x > 0
+                ? overlap * item.scaleX
+                : 0
+            )
+          );
+
+        const destinationY =
+          Math.round(
+            tile.y * item.scaleY +
+            (
+              tile.y > 0
+                ? overlap * item.scaleY
+                : 0
+            )
+          );
+
+        const destinationWidth =
+          Math.round(
+            sourceWidth
+          );
+
+        const destinationHeight =
+          Math.round(
+            sourceHeight
+          );
+
+        if (
+          sourceWidth > 0 &&
+          sourceHeight > 0
+        ) {
+
+          context.drawImage(
+            source,
+            sx,
+            sy,
+            sourceWidth,
+            sourceHeight,
+            destinationX,
+            destinationY,
+            destinationWidth,
+            destinationHeight
+          );
+
+        }
+
+      }
+
+      if (
+        typeof options.onProgress ===
+        "function"
+      ) {
+
+        options.onProgress(
+          100,
+          "Tiles combined."
+        );
+
+      }
+
       return {
-        tileSize,
 
-        overlap:
-          tileSize <= 256
-            ? 16
-            : 32,
+        canvas: outputCanvas,
 
-        deviceMemory: memory
+        scaleX,
+
+        scaleY,
+
+        tiles: total
+
       };
+
     }
+
   };
 
   window.FidelisTileEngine =
-    FidelisTileEngine;
+    TileEngine;
+
+  /*
+   Backwards compatibility.
+  */
+
+  window.FidelisAITileEngine =
+    TileEngine;
 
 })();
