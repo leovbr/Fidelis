@@ -3,138 +3,254 @@
 
     /*
      * FIDELIS AI RUNTIME
-     * --------------------------------
+     * =========================
      *
-     * Runtime abstraction layer.
+     * Real browser AI runtime:
+     * ONNX Runtime Web
      *
-     * Pipeline:
+     * Supported:
+     * - WebGPU
+     * - WebGL
+     * - WASM / CPU
      *
-     * AI Model
-     *    ↓
-     * Runtime
-     *    ↓
-     * Inference
-     *    ↓
-     * Tensor Output
-     *
-     * This layer allows FIDELIS to use
-     * WebGPU / WebGL / WASM runtimes
-     * without changing the rest of the app.
-     *
-     * IMPORTANT:
-     * No fake AI inference is performed.
+     * Runtime is loaded dynamically so
+     * index.html does not need npm/build tools.
      */
 
+    const ORT_VERSION = "1.29.0";
+
+    const CDN_BASE =
+        "https://cdn.jsdelivr.net/npm/onnxruntime-web@" +
+        ORT_VERSION +
+        "/dist/";
+
+    const RUNTIME_URLS = {
+
+        webgpu:
+            CDN_BASE +
+            "ort.webgpu.min.js",
+
+        webgl:
+            CDN_BASE +
+            "ort.webgl.min.js",
+
+        wasm:
+            CDN_BASE +
+            "ort.wasm.min.js",
+
+        auto:
+            CDN_BASE +
+            "ort.min.js"
+    };
+
     let initialized = false;
+
+    let loading = false;
+
     let backend = "none";
-    let runtime = null;
+
+    let ort = null;
+
+    let runtimePromise = null;
 
     /*
      * =========================
-     * INITIALIZE
+     * SCRIPT LOADER
      * =========================
      */
 
-    async function init(options = {}) {
+    function loadScript(src) {
 
-        if (initialized) {
-            return getStatus();
-        }
+        return new Promise(
+            function (resolve, reject) {
 
-        backend =
-            options.backend ||
-            detectBackend();
+                /*
+                 * Don't load twice.
+                 */
 
-        /*
-         * Runtime can be injected externally.
-         *
-         * Example future runtime:
-         *
-         * FidelisRuntime.setRuntime({
-         *     run: async function (...) {}
-         * });
-         *
-         * This keeps the architecture
-         * independent from a specific library.
-         */
+                const existing =
+                    document.querySelector(
+                        'script[data-fidelis-ort="true"]'
+                    );
 
-        if (options.runtime) {
+                if (existing) {
 
-            setRuntime(
-                options.runtime
-            );
-        }
+                    if (window.ort) {
 
-        initialized = true;
+                        resolve(
+                            window.ort
+                        );
 
-        return getStatus();
+                        return;
+                    }
+
+                    existing.addEventListener(
+                        "load",
+                        function () {
+                            resolve(
+                                window.ort
+                            );
+                        }
+                    );
+
+                    existing.addEventListener(
+                        "error",
+                        function () {
+                            reject(
+                                new Error(
+                                    "ONNX Runtime gagal dimuat."
+                                )
+                            );
+                        }
+                    );
+
+                    return;
+                }
+
+                const script =
+                    document.createElement(
+                        "script"
+                    );
+
+                script.src = src;
+
+                script.async = true;
+
+                script.dataset.fidelisOrt =
+                    "true";
+
+                script.onload =
+                    function () {
+
+                        if (!window.ort) {
+
+                            reject(
+                                new Error(
+                                    "ONNX Runtime loaded tetapi API ort tidak ditemukan."
+                                )
+                            );
+
+                            return;
+                        }
+
+                        resolve(
+                            window.ort
+                        );
+                    };
+
+                script.onerror =
+                    function () {
+
+                        reject(
+                            new Error(
+                                "Gagal mengunduh ONNX Runtime Web."
+                            )
+                        );
+                    };
+
+                document.head.appendChild(
+                    script
+                );
+            }
+        );
     }
 
     /*
      * =========================
-     * BACKEND
+     * BACKEND DETECTION
      * =========================
      */
 
-    function detectBackend() {
+    function canUseWebGPU() {
 
-        /*
-         * Prefer WebGPU.
-         */
+        return (
+            typeof navigator !==
+                "undefined" &&
+            !!navigator.gpu
+        );
+    }
+
+    function canUseWebGL() {
 
         if (
-            typeof navigator !== "undefined" &&
-            navigator.gpu
+            typeof document ===
+            "undefined"
+        ) {
+
+            return false;
+        }
+
+        try {
+
+            const canvas =
+                document.createElement(
+                    "canvas"
+                );
+
+            return Boolean(
+                canvas.getContext(
+                    "webgl2"
+                ) ||
+                canvas.getContext(
+                    "webgl"
+                )
+            );
+
+        } catch (error) {
+
+            return false;
+        }
+    }
+
+    function canUseWASM() {
+
+        return (
+            typeof WebAssembly !==
+            "undefined"
+        );
+    }
+
+    function detectBackend(
+        preferred = "auto"
+    ) {
+
+        if (
+            preferred === "webgpu" &&
+            canUseWebGPU()
         ) {
 
             return "webgpu";
         }
 
-        /*
-         * Then WebGL.
-         */
-
         if (
-            typeof document !== "undefined"
+            preferred === "webgl" &&
+            canUseWebGL()
         ) {
 
-            try {
+            return "webgl";
+        }
 
-                const canvas =
-                    document.createElement(
-                        "canvas"
-                    );
+        if (
+            preferred === "wasm" &&
+            canUseWASM()
+        ) {
 
-                const gl =
-                    canvas.getContext(
-                        "webgl2"
-                    ) ||
-                    canvas.getContext(
-                        "webgl"
-                    );
-
-                if (gl) {
-                    return "webgl";
-                }
-
-            } catch (error) {
-
-                console.warn(
-                    "WebGL detection failed.",
-                    error
-                );
-            }
+            return "wasm";
         }
 
         /*
-         * WASM fallback.
+         * Automatic fallback.
          */
 
-        if (
-            typeof WebAssembly !==
-            "undefined"
-        ) {
+        if (canUseWebGPU()) {
+            return "webgpu";
+        }
 
+        if (canUseWebGL()) {
+            return "webgl";
+        }
+
+        if (canUseWASM()) {
             return "wasm";
         }
 
@@ -143,140 +259,243 @@
 
     /*
      * =========================
-     * RUNTIME
+     * INITIALIZE
      * =========================
      */
 
-    function setRuntime(
-        runtimeInstance
+    async function init(
+        options = {}
     ) {
 
-        if (
-            runtimeInstance &&
-            typeof runtimeInstance.run !==
-            "function"
-        ) {
-
-            throw new Error(
-                "Runtime harus memiliki fungsi run()."
-            );
+        if (initialized && ort) {
+            return getStatus();
         }
 
-        runtime =
-            runtimeInstance || null;
+        if (runtimePromise) {
+            await runtimePromise;
+            return getStatus();
+        }
+
+        runtimePromise =
+            initializeRuntime(
+                options
+            );
+
+        try {
+
+            await runtimePromise;
+
+        } finally {
+
+            runtimePromise = null;
+        }
 
         return getStatus();
     }
 
-    function getRuntime() {
-        return runtime;
-    }
+    async function initializeRuntime(
+        options
+    ) {
 
-    function hasRuntime() {
-        return runtime !== null;
+        loading = true;
+
+        try {
+
+            const preferred =
+                options.backend ||
+                getConfiguredBackend();
+
+            backend =
+                detectBackend(
+                    preferred
+                );
+
+            if (backend === "none") {
+
+                throw new Error(
+                    "Browser tidak memiliki backend AI yang kompatibel."
+                );
+            }
+
+            /*
+             * Load matching ORT build.
+             */
+
+            const runtimeURL =
+                RUNTIME_URLS[backend];
+
+            ort =
+                await loadScript(
+                    runtimeURL
+                );
+
+            if (!ort) {
+
+                throw new Error(
+                    "ONNX Runtime tidak tersedia."
+                );
+            }
+
+            /*
+             * Configure WASM path.
+             *
+             * The WASM runtime files are served
+             * from the same jsDelivr package.
+             */
+
+            if (
+                backend === "wasm" &&
+                ort.env &&
+                ort.env.wasm
+            ) {
+
+                ort.env.wasm.wasmPaths =
+                    CDN_BASE;
+            }
+
+            initialized = true;
+
+            return true;
+
+        } finally {
+
+            loading = false;
+        }
     }
 
     /*
      * =========================
-     * MODEL VALIDATION
+     * CONFIG
      * =========================
      */
 
-    function validateModel(model) {
+    function getConfiguredBackend() {
 
-        if (!model) {
+        if (
+            window.FidelisAIConfig &&
+            typeof FidelisAIConfig
+                .getRuntimeConfig ===
+                "function"
+        ) {
 
-            throw new Error(
-                "Model AI tidak ditemukan."
+            const config =
+                FidelisAIConfig
+                    .getRuntimeConfig();
+
+            return (
+                config.preferredBackend ||
+                "auto"
             );
         }
 
-        if (!model.ready) {
-
-            throw new Error(
-                "Model AI belum siap."
-            );
-        }
-
-        if (!model.data) {
-
-            throw new Error(
-                "Data model AI tidak tersedia."
-            );
-        }
-
-        return true;
+        return "auto";
     }
 
     /*
      * =========================
-     * INFERENCE
+     * GET ORT
      * =========================
      */
 
-    async function run(
-        model,
-        input,
+    function getORT() {
+
+        if (!ort) {
+
+            throw new Error(
+                "ONNX Runtime belum diinisialisasi."
+            );
+        }
+
+        return ort;
+    }
+
+    /*
+     * =========================
+     * SESSION OPTIONS
+     * =========================
+     */
+
+    function getSessionOptions(
+        requestedBackend
+    ) {
+
+        const selected =
+            requestedBackend ||
+            backend;
+
+        const options = {
+
+            executionProviders: [
+                selected
+            ]
+        };
+
+        /*
+         * WebGPU prefers NCHW for many
+         * image restoration models.
+         *
+         * The actual model must still
+         * define its expected input layout.
+         */
+
+        if (
+            selected === "webgpu"
+        ) {
+
+            options.preferredLayout =
+                "NCHW";
+        }
+
+        return options;
+    }
+
+    /*
+     * =========================
+     * CREATE SESSION
+     * =========================
+     */
+
+    async function createSession(
+        modelData,
         options = {}
     ) {
 
-        validateModel(model);
+        const runtime =
+            getORT();
 
-        if (!runtime) {
+        if (!modelData) {
 
             throw new Error(
-                "AI runtime belum terhubung."
+                "Data model ONNX tidak ditemukan."
             );
         }
 
-        if (!input) {
-
-            throw new Error(
-                "Input tensor tidak ditemukan."
+        const sessionOptions =
+            getSessionOptions(
+                options.backend
             );
-        }
 
         if (
-            typeof runtime.run !==
-            "function"
+            options.graphOptimizationLevel
         ) {
 
-            throw new Error(
-                "Runtime tidak mendukung inference."
-            );
+            sessionOptions.graphOptimizationLevel =
+                options.graphOptimizationLevel;
         }
 
-        if (
-            typeof options.onProgress ===
-            "function"
-        ) {
+        /*
+         * ONNX Runtime accepts model data
+         * as an ArrayBuffer.
+         */
 
-            options.onProgress(5);
-        }
+        const session =
+            await runtime.InferenceSession
+                .create(
+                    modelData,
+                    sessionOptions
+                );
 
-        const result =
-            await runtime.run(
-                model,
-                input,
-                options
-            );
-
-        if (!result) {
-
-            throw new Error(
-                "Runtime menghasilkan output kosong."
-            );
-        }
-
-        if (
-            typeof options.onProgress ===
-            "function"
-        ) {
-
-            options.onProgress(100);
-        }
-
-        return result;
+        return session;
     }
 
     /*
@@ -291,14 +510,30 @@
 
             initialized,
 
+            loading,
+
             backend,
 
-            runtimeConnected:
-                runtime !== null,
+            runtime:
+                ort
+                    ? "onnxruntime-web"
+                    : null,
+
+            version:
+                ORT_VERSION,
+
+            webgpu:
+                canUseWebGPU(),
+
+            webgl:
+                canUseWebGL(),
+
+            wasm:
+                canUseWASM(),
 
             ready:
                 initialized &&
-                runtime !== null
+                ort !== null
         };
     }
 
@@ -310,24 +545,11 @@
 
     async function shutdown() {
 
-        if (
-            runtime &&
-            typeof runtime.dispose ===
-            "function"
-        ) {
+        ort = null;
 
-            try {
-                await runtime.dispose();
-            } catch (error) {
-                console.warn(
-                    "Runtime dispose failed:",
-                    error
-                );
-            }
-        }
-
-        runtime = null;
         initialized = false;
+
+        backend = "none";
     }
 
     /*
@@ -340,21 +562,22 @@
 
         init,
 
+        getORT,
+
+        createSession,
+
         detectBackend,
 
-        setRuntime,
-
-        getRuntime,
-
-        hasRuntime,
-
-        validateModel,
-
-        run,
+        getSessionOptions,
 
         getStatus,
 
-        shutdown
+        shutdown,
+
+        getVersion:
+            function () {
+                return ORT_VERSION;
+            }
     };
 
 })();
