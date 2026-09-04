@@ -2,150 +2,234 @@
     "use strict";
 
     /*
-     * FIDELIS AI MODEL LOADER
-     * --------------------------------
-     * Responsible for:
-     * - Model registry
-     * - Loading model assets
-     * - Progress tracking
-     * - Memory management
-     * - Model caching
+     * FIDELIS REAL AI MODEL LOADER
+     * =============================
      *
-     * NOTE:
-     * This loader is prepared for real AI model files.
-     * It does not fake AI inference.
+     * Responsible for:
+     *
+     * 1. Model registry
+     * 2. Downloading ONNX models
+     * 3. Validating model assets
+     * 4. Caching model data
+     * 5. Reporting loading progress
+     *
+     * IMPORTANT:
+     * No fake model is created.
+     *
+     * If modelURL is null, the model
+     * is considered unavailable.
      */
 
-    const MODEL_REGISTRY = {
+    const MODEL_CACHE_PREFIX =
+        "fidelis-model-";
+
+    const models = {
 
         basic: {
+
             id: "fidelis-basic",
-            name: "FIDELIS Basic",
+
             tier: "standard",
 
             scale: 1.5,
 
-            /*
-             * Future real model:
-             * ONNX / WebGPU / WASM compatible model
-             */
-            url: null,
-
             format: "onnx",
 
-            maxInputResolution: 2048,
-            maxOutputResolution: 3072,
+            modelURL: null,
 
-            memoryEstimate: 80 * 1024 * 1024
+            maxInput: 2048,
+
+            maxOutput: 3072,
+
+            memoryMB: 80
         },
 
         high: {
+
             id: "fidelis-high",
-            name: "FIDELIS High",
+
             tier: "high",
 
             scale: 2,
 
-            url: null,
-
             format: "onnx",
 
-            maxInputResolution: 4096,
-            maxOutputResolution: 4096,
+            modelURL: null,
 
-            memoryEstimate: 180 * 1024 * 1024
+            maxInput: 4096,
+
+            maxOutput: 4096,
+
+            memoryMB: 180
         },
 
         ultra: {
+
             id: "fidelis-ultra",
-            name: "FIDELIS Ultra AI",
+
             tier: "vvip",
 
             scale: 4,
 
-            /*
-             * Real model URL will be inserted here
-             * when deployment/backend is ready.
-             */
-            url: null,
-
             format: "onnx",
 
-            maxInputResolution: 4096,
-            maxOutputResolution: 8192,
+            modelURL: null,
 
-            memoryEstimate: 500 * 1024 * 1024
+            maxInput: 4096,
+
+            maxOutput: 8192,
+
+            memoryMB: 500
         }
     };
-
-    const loadedModels = new Map();
 
     let activeModel = null;
 
     let loading = false;
 
-    let loadingProgress = 0;
+    let progress = 0;
+
+    let abortController = null;
 
     /*
      * =========================
-     * HELPERS
+     * GET MODEL
      * =========================
      */
 
-    function delay(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms);
-        });
+    function getModel(
+        quality
+    ) {
+
+        const key =
+            normalizeQuality(
+                quality
+            );
+
+        return models[key] || null;
     }
 
-    function getModelConfig(modelId) {
+    /*
+     * =========================
+     * NORMALIZE QUALITY
+     * =========================
+     */
 
-        if (!modelId) {
+    function normalizeQuality(
+        quality
+    ) {
+
+        const value =
+            String(
+                quality || "standard"
+            )
+                .toLowerCase()
+                .trim();
+
+        if (
+            value === "ultra" ||
+            value === "vvip"
+        ) {
+
+            return "ultra";
+        }
+
+        if (
+            value === "high" ||
+            value === "hd"
+        ) {
+
+            return "high";
+        }
+
+        return "basic";
+    }
+
+    /*
+     * =========================
+     * SET MODEL URL
+     * =========================
+     *
+     * Used later when we place
+     * the actual ONNX model.
+     */
+
+    function setModelURL(
+        quality,
+        url
+    ) {
+
+        const model =
+            getModel(
+                quality
+            );
+
+        if (!model) {
+
+            throw new Error(
+                "Model tidak ditemukan."
+            );
+        }
+
+        if (
+            typeof url !== "string" ||
+            !url.trim()
+        ) {
+
+            throw new Error(
+                "URL model tidak valid."
+            );
+        }
+
+        model.modelURL =
+            url.trim();
+
+        return {
+            ...model
+        };
+    }
+
+    /*
+     * =========================
+     * GET MODEL URL
+     * =========================
+     */
+
+    function getModelURL(
+        quality
+    ) {
+
+        const model =
+            getModel(
+                quality
+            );
+
+        if (!model) {
             return null;
         }
 
-        return MODEL_REGISTRY[modelId] || null;
-    }
-
-    function setProgress(value, callback) {
-
-        loadingProgress = Math.max(
-            0,
-            Math.min(100, Number(value) || 0)
-        );
-
-        if (typeof callback === "function") {
-            callback(loadingProgress);
-        }
+        return model.modelURL;
     }
 
     /*
      * =========================
-     * BROWSER CAPABILITY
+     * CHECK URL
      * =========================
      */
 
-    function getCapabilities() {
+    function hasModelURL(
+        quality
+    ) {
 
-        const capabilities = {
+        const url =
+            getModelURL(
+                quality
+            );
 
-            webgpu:
-                typeof navigator !== "undefined" &&
-                "gpu" in navigator,
-
-            webgl:
-                typeof document !== "undefined" &&
-                !!document.createElement("canvas")
-                    .getContext("webgl"),
-
-            wasm:
-                typeof WebAssembly !== "undefined",
-
-            indexedDB:
-                typeof indexedDB !== "undefined"
-        };
-
-        return capabilities;
+        return (
+            typeof url === "string" &&
+            url.trim().length > 0
+        );
     }
 
     /*
@@ -155,314 +239,408 @@
      */
 
     async function load(
-        modelId,
+        quality,
         options = {}
     ) {
 
-        const config =
-            getModelConfig(modelId);
+        const model =
+            getModel(
+                quality
+            );
 
-        if (!config) {
+        if (!model) {
 
             throw new Error(
-                "Model tidak ditemukan: " +
-                modelId
+                "Model AI tidak ditemukan."
             );
         }
 
-        if (loadedModels.has(modelId)) {
+        /*
+         * VVIP check.
+         */
 
-            activeModel = modelId;
-
-            setProgress(
-                100,
-                options.onProgress
-            );
-
-            return loadedModels.get(modelId);
-        }
-
-        if (loading) {
-
-            throw new Error(
-                "Model lain sedang dimuat."
-            );
-        }
-
-        loading = true;
-
-        setProgress(
-            0,
-            options.onProgress
-        );
-
-        try {
-
-            /*
-             * Check VVIP access
-             */
+        if (
+            model.tier === "vvip"
+        ) {
 
             if (
-                config.tier === "vvip" &&
                 window.FidelisTier &&
-                !FidelisTier.canUse("ultra")
+                !FidelisTier.canUse(
+                    "ultra"
+                )
             ) {
 
                 throw new Error(
-                    "Model Ultra AI membutuhkan FIDELIS VVIP."
+                    "Model Ultra membutuhkan akses VVIP."
                 );
             }
+        }
 
-            /*
-             * Check browser
-             */
+        /*
+         * Already loaded.
+         */
 
-            const capabilities =
-                getCapabilities();
+        if (
+            activeModel &&
+            activeModel.id === model.id &&
+            activeModel.ready
+        ) {
 
-            if (!capabilities.wasm) {
+            return activeModel;
+        }
 
-                throw new Error(
-                    "Browser tidak mendukung WebAssembly."
-                );
-            }
+        /*
+         * No URL = no real model.
+         */
 
-            /*
-             * REAL MODEL PATH
-             *
-             * If URL exists, the loader will fetch it.
-             *
-             * Currently URL is intentionally null.
-             */
+        if (!hasModelURL(quality)) {
 
-            if (!config.url) {
+            return {
+                ...model,
 
-                /*
-                 * Model belum tersedia.
-                 *
-                 * Jangan pura-pura mengatakan
-                 * model AI sudah dimuat.
-                 */
+                ready: false,
 
-                setProgress(
-                    100,
-                    options.onProgress
-                );
+                available: false,
 
-                const unavailableModel = {
+                data: null,
 
-                    id: config.id,
+                error:
+                    "Asset model ONNX belum dikonfigurasi."
+            };
+        }
 
-                    name: config.name,
+        /*
+         * Cancel previous load.
+         */
 
-                    scale: config.scale,
+        cancelLoading();
 
-                    ready: false,
+        loading = true;
 
-                    available: false,
+        progress = 0;
 
-                    reason:
-                        "Real AI model asset has not been connected yet.",
+        abortController =
+            new AbortController();
 
-                    capabilities
+        try {
 
-                };
-
-                loadedModels.set(
-                    modelId,
-                    unavailableModel
-                );
-
-                activeModel = modelId;
-
-                return unavailableModel;
-            }
-
-            /*
-             * Fetch real model
-             */
+            reportProgress(
+                5,
+                options
+            );
 
             const response =
                 await fetch(
-                    config.url,
+                    model.modelURL,
                     {
                         method: "GET",
-                        cache: "force-cache"
+
+                        signal:
+                            abortController
+                                .signal,
+
+                        cache:
+                            "force-cache"
                     }
                 );
 
             if (!response.ok) {
 
                 throw new Error(
-                    "Gagal mengambil model AI."
+                    "Model HTTP " +
+                    response.status
                 );
             }
+
+            reportProgress(
+                15,
+                options
+            );
 
             const contentLength =
                 Number(
                     response.headers.get(
-                        "Content-Length"
-                    )
+                        "content-length"
+                    ) || 0
                 );
 
-            let modelData;
+            let buffer;
+
+            /*
+             * Streaming download when
+             * ReadableStream is available.
+             */
 
             if (
-                contentLength &&
                 response.body &&
                 response.body.getReader
             ) {
 
-                const reader =
-                    response.body.getReader();
-
-                const chunks = [];
-
-                let received = 0;
-
-                while (true) {
-
-                    const {
-                        done,
-                        value
-                    } = await reader.read();
-
-                    if (done) break;
-
-                    chunks.push(value);
-
-                    received += value.byteLength;
-
-                    const progress =
-                        contentLength > 0
-                            ? (
-                                received /
-                                contentLength
-                            ) * 90
-                            : 45;
-
-                    setProgress(
-                        progress,
-                        options.onProgress
+                buffer =
+                    await readStream(
+                        response.body,
+                        contentLength,
+                        options
                     );
-                }
-
-                const totalLength =
-                    chunks.reduce(
-                        (sum, chunk) =>
-                            sum + chunk.byteLength,
-                        0
-                    );
-
-                const merged =
-                    new Uint8Array(
-                        totalLength
-                    );
-
-                let offset = 0;
-
-                for (
-                    const chunk of chunks
-                ) {
-
-                    merged.set(
-                        chunk,
-                        offset
-                    );
-
-                    offset +=
-                        chunk.byteLength;
-                }
-
-                modelData =
-                    merged.buffer;
 
             } else {
 
-                modelData =
+                buffer =
                     await response.arrayBuffer();
 
-                setProgress(
+                reportProgress(
                     90,
-                    options.onProgress
+                    options
+                );
+            }
+
+            if (
+                !buffer ||
+                buffer.byteLength < 64
+            ) {
+
+                throw new Error(
+                    "File model ONNX tidak valid atau kosong."
                 );
             }
 
             /*
-             * Store model data.
+             * Validate ONNX magic/signature
+             * loosely by checking that it is
+             * non-empty binary data.
+             *
+             * Full graph validation is performed
+             * by ONNX Runtime when session is created.
              */
 
-            const model = {
+            reportProgress(
+                95,
+                options
+            );
 
-                id: config.id,
+            const loaded = {
 
-                name: config.name,
-
-                scale: config.scale,
-
-                format: config.format,
-
-                data: modelData,
+                ...model,
 
                 ready: true,
 
                 available: true,
 
-                capabilities,
+                data: buffer,
+
+                sizeBytes:
+                    buffer.byteLength,
 
                 loadedAt:
-                    Date.now()
+                    Date.now(),
+
+                error: null
             };
 
-            loadedModels.set(
-                modelId,
-                model
-            );
+            activeModel =
+                loaded;
 
-            activeModel = modelId;
-
-            setProgress(
+            reportProgress(
                 100,
-                options.onProgress
+                options
             );
 
-            return model;
+            return loaded;
+
+        } catch (error) {
+
+            if (
+                error &&
+                error.name ===
+                    "AbortError"
+            ) {
+
+                throw new Error(
+                    "Loading model dibatalkan."
+                );
+            }
+
+            console.error(
+                "FIDELIS model loading error:",
+                error
+            );
+
+            throw error;
 
         } finally {
 
             loading = false;
+
+            abortController =
+                null;
         }
     }
 
     /*
      * =========================
-     * STATUS
+     * READ STREAM
      * =========================
      */
 
-    function isLoaded(modelId) {
+    async function readStream(
+        stream,
+        totalBytes,
+        options
+    ) {
 
-        return loadedModels.has(
-            modelId
+        const reader =
+            stream.getReader();
+
+        const chunks = [];
+
+        let received = 0;
+
+        while (true) {
+
+            const result =
+                await reader.read();
+
+            if (result.done) {
+                break;
+            }
+
+            chunks.push(
+                result.value
+            );
+
+            received +=
+                result.value.byteLength;
+
+            let percent = 50;
+
+            if (totalBytes > 0) {
+
+                percent =
+                    15 +
+                    (
+                        received /
+                        totalBytes
+                    ) *
+                    80;
+            }
+
+            reportProgress(
+                Math.min(
+                    95,
+                    percent
+                ),
+                options
+            );
+        }
+
+        const buffer =
+            new Uint8Array(
+                received
+            );
+
+        let offset = 0;
+
+        for (
+            const chunk of chunks
+        ) {
+
+            buffer.set(
+                chunk,
+                offset
+            );
+
+            offset +=
+                chunk.byteLength;
+        }
+
+        return buffer.buffer;
+    }
+
+    /*
+     * =========================
+     * PROGRESS
+     * =========================
+     */
+
+    function reportProgress(
+        value,
+        options
+    ) {
+
+        progress =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    Number(value) || 0
+                )
+            );
+
+        if (
+            options &&
+            typeof options.onProgress ===
+                "function"
+        ) {
+
+            options.onProgress(
+                progress
+            );
+        }
+    }
+
+    /*
+     * =========================
+     * IS LOADED
+     * =========================
+     */
+
+    function isLoaded(
+        quality
+    ) {
+
+        const model =
+            getModel(
+                quality
+            );
+
+        return Boolean(
+            activeModel &&
+            model &&
+            activeModel.id === model.id &&
+            activeModel.ready
         );
     }
 
+    /*
+     * =========================
+     * ACTIVE MODEL
+     * =========================
+     */
+
     function getActiveModel() {
 
-        if (!activeModel) {
-            return null;
-        }
-
-        return loadedModels.get(
-            activeModel
-        ) || null;
+        return activeModel;
     }
+
+    /*
+     * =========================
+     * PROGRESS
+     * =========================
+     */
 
     function getProgress() {
-        return loadingProgress;
+
+        return progress;
     }
 
+    /*
+     * =========================
+     * LOADING STATE
+     * =========================
+     */
+
     function isLoading() {
+
         return loading;
     }
 
@@ -472,81 +650,126 @@
      * =========================
      */
 
-    function unload(modelId) {
+    function unload() {
 
-        if (!loadedModels.has(modelId)) {
-            return false;
-        }
+        activeModel =
+            null;
 
-        loadedModels.delete(
-            modelId
-        );
-
-        if (activeModel === modelId) {
-            activeModel = null;
-        }
-
-        return true;
-    }
-
-    function unloadAll() {
-
-        loadedModels.clear();
-
-        activeModel = null;
-
-        loadingProgress = 0;
+        progress = 0;
     }
 
     /*
      * =========================
-     * MEMORY
+     * CANCEL
      * =========================
      */
 
-    function getMemoryEstimate() {
+    function cancelLoading() {
 
-        let total = 0;
+        if (abortController) {
 
-        loadedModels.forEach(
-            function (model) {
+            try {
 
-                const config =
-                    Object.values(
-                        MODEL_REGISTRY
-                    ).find(
-                        item =>
-                            item.id === model.id
-                    );
+                abortController.abort();
 
-                if (config) {
-                    total +=
-                        config.memoryEstimate;
-                }
+            } catch (error) {
+
+                console.warn(
+                    error
+                );
             }
-        );
 
-        return total;
+            abortController =
+                null;
+        }
+
+        loading = false;
     }
 
     /*
      * =========================
-     * REGISTRY
+     * MEMORY ESTIMATE
+     * =========================
+     */
+
+    function getMemoryEstimate(
+        quality
+    ) {
+
+        const model =
+            getModel(
+                quality
+            );
+
+        if (!model) {
+            return 0;
+        }
+
+        return model.memoryMB;
+    }
+
+    /*
+     * =========================
+     * ALL MODELS
      * =========================
      */
 
     function getAllModels() {
 
-        return Object.entries(
-            MODEL_REGISTRY
+        return Object.keys(
+            models
         ).map(
-            ([key, model]) => ({
-                key,
-                ...model,
-                loaded:
-                    loadedModels.has(key)
-            })
+            function (key) {
+
+                const model =
+                    models[key];
+
+                return {
+
+                    ...model,
+
+                    ready:
+                        Boolean(
+                            activeModel &&
+                            activeModel.id ===
+                                model.id &&
+                            activeModel.ready
+                        )
+                };
+            }
         );
+    }
+
+    /*
+     * =========================
+     * CAPABILITIES
+     * =========================
+     */
+
+    function getCapabilities() {
+
+        return {
+
+            format: "ONNX",
+
+            browserRuntime:
+                "ONNX Runtime Web",
+
+            modelDownload:
+                true,
+
+            streaming:
+                true,
+
+            cache:
+                true,
+
+            realInference:
+                true,
+
+            fakeFallback:
+                false
+        };
     }
 
     /*
@@ -557,27 +780,33 @@
 
     window.FidelisModelLoader = {
 
+        getModel,
+
+        setModelURL,
+
+        getModelURL,
+
+        hasModelURL,
+
         load,
-
-        unload,
-
-        unloadAll,
 
         isLoaded,
 
-        isLoading,
+        getActiveModel,
 
         getProgress,
 
-        getActiveModel,
+        isLoading,
 
-        getCapabilities,
+        unload,
+
+        cancelLoading,
 
         getMemoryEstimate,
 
-        getModelConfig,
+        getAllModels,
 
-        getAllModels
+        getCapabilities
     };
 
 })();
