@@ -1,407 +1,164 @@
-/* =========================================================
-   FIDELIS - AI IMAGE PIPELINE
-   Enhance. Don't Change.
-   ========================================================= */
-
 (function () {
     "use strict";
 
-    window.FidelisImageAI = {
+    /*
+     * FIDELIS IMAGE AI
+     * --------------------------------
+     * AI image enhancement controller.
+     *
+     * Pipeline:
+     *
+     * File
+     *  ↓
+     * Image validation
+     *  ↓
+     * Face preservation guard
+     *  ↓
+     * Model selection
+     *  ↓
+     * Model loader
+     *  ↓
+     * AI inference
+     *  ↓
+     * Output validation
+     *  ↓
+     * Final image
+     *
+     * IMPORTANT:
+     * This module NEVER claims AI processing
+     * when a real model/runtime is unavailable.
+     */
 
-        initialized: false,
+    const SETTINGS = {
 
-        settings: {
+        preserveIdentity: true,
 
-            preserveIdentity: true,
+        preserveFaceStructure: true,
 
-            preserveFaceStructure: true,
+        preserveSkinTexture: true,
 
-            preserveSkinTexture: true,
+        avoidFaceGeneration: true,
 
-            avoidFaceGeneration: true,
+        maxOutputResolution: 8192
+    };
 
-            maxOutputResolution: 4096
+    /*
+     * =========================
+     * INITIALIZATION
+     * =========================
+     */
 
-        },
+    async function init() {
 
+        if (window.FidelisInference) {
 
-        /* =====================================================
-           INITIALIZE
-           ===================================================== */
+            await FidelisInference.init();
+        }
 
-        async init() {
+        return getStatus();
+    }
 
-            if (
-                this.initialized
-            ) {
+    /*
+     * =========================
+     * STATUS
+     * =========================
+     */
 
-                return true;
+    function getStatus() {
 
-            }
+        const inference =
+            window.FidelisInference
+                ? FidelisInference.getStatus()
+                : null;
 
+        const loader =
+            window.FidelisModelLoader
+                ? {
+                    loading:
+                        FidelisModelLoader.isLoading(),
 
-            if (
-                window.FidelisAI
-            ) {
+                    progress:
+                        FidelisModelLoader.getProgress(),
 
-                await window.FidelisAI.init();
+                    active:
+                        FidelisModelLoader.getActiveModel()
+                }
+                : null;
 
-            }
+        return {
 
+            initialized: true,
 
-            this.initialized =
-                true;
+            settings: {
+                ...SETTINGS
+            },
 
+            inference,
 
-            return true;
+            loader,
 
-        },
-
-
-        /* =====================================================
-           ENHANCE
-           ===================================================== */
-
-        async enhance(
-            file,
-            quality = "standard",
-            onProgress = null
-        ) {
-
-            if (!file) {
-
-                throw new Error(
-                    "No image selected."
-                );
-
-            }
-
-
-            if (
-                !file.type.startsWith(
-                    "image/"
+            realAIReady:
+                Boolean(
+                    inference &&
+                    inference.ready
                 )
-            ) {
+        };
+    }
 
-                throw new Error(
-                    "FIDELIS Image AI only accepts images."
-                );
+    /*
+     * =========================
+     * VALIDATION
+     * =========================
+     */
 
-            }
+    function validateFile(file) {
 
+        if (!file) {
 
-            await this.init();
+            throw new Error(
+                "File gambar tidak ditemukan."
+            );
+        }
 
+        if (!file.type.startsWith("image/")) {
 
-            /*
-             * Select model.
-             */
+            throw new Error(
+                "FIDELIS AI hanya menerima file gambar."
+            );
+        }
 
-            const model =
-                window.FidelisModelManager
-                    ? window.FidelisModelManager
-                        .getModelForQuality(
-                            quality
-                        )
-                    : null;
+        return true;
+    }
 
+    /*
+     * =========================
+     * LOAD IMAGE
+     * =========================
+     */
 
-            if (!model) {
+    function loadImage(file) {
 
-                throw new Error(
-                    "AI model configuration unavailable."
-                );
+        return new Promise(
+            function (resolve, reject) {
 
-            }
-
-
-            /*
-             * Ultra model membutuhkan VVIP.
-             *
-             * Untuk sekarang kita hanya menyiapkan
-             * pipeline-nya.
-             */
-
-            if (
-                quality === "ultra"
-            ) {
-
-                throw new Error(
-                    "FIDELIS Ultra AI is reserved for VVIP."
-                );
-
-            }
-
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    5,
-                    "Preparing AI pipeline..."
-                );
-
-            }
-
-
-            /*
-             * Load model.
-             */
-
-            if (
-                window.FidelisModelManager
-            ) {
-
-                await window.FidelisModelManager.load(
-                    model.id,
-                    (
-                        progress,
-                        message
-                    ) => {
-
-                        const mapped =
-                            5 +
-                            progress * 0.25;
-
-                        if (
-                            typeof onProgress ===
-                            "function"
-                        ) {
-
-                            onProgress(
-                                mapped,
-                                message
-                            );
-
-                        }
-
-                    }
-                );
-
-            }
-
-
-            /*
-             * Analyze face protection.
-             */
-
-            let faceAnalysis = null;
-
-
-            if (
-                window.FidelisFace
-            ) {
+                const url =
+                    URL.createObjectURL(file);
 
                 const image =
-                    await this.loadImage(
-                        file
-                    );
+                    new Image();
 
-                faceAnalysis =
-                    window.FidelisFace
-                        .analyzeImage(
-                            image
-                        );
-
-            }
-
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    40,
-                    "Protecting identity..."
-                );
-
-            }
-
-
-            /*
-             * AI configuration.
-             */
-
-            const aiConfig = {
-
-                preserveIdentity:
-                    this.settings
-                        .preserveIdentity,
-
-                preserveFaceStructure:
-                    this.settings
-                        .preserveFaceStructure,
-
-                preserveSkinTexture:
-                    this.settings
-                        .preserveSkinTexture,
-
-                avoidFaceGeneration:
-                    this.settings
-                        .avoidFaceGeneration
-
-            };
-
-
-            /*
-             * =============================================
-             * CURRENT FALLBACK
-             * =============================================
-             *
-             * Sampai model ONNX/WebGPU asli dipasang,
-             * gunakan browser enhancement sebagai fallback.
-             *
-             * Jadi pipeline sudah benar:
-             *
-             * Upload
-             * ↓
-             * Model Manager
-             * ↓
-             * Face Protection
-             * ↓
-             * Image Engine
-             * ↓
-             * Result
-             */
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    55,
-                    "Enhancing image details..."
-                );
-
-            }
-
-
-            if (
-                !window.FidelisImage
-            ) {
-
-                throw new Error(
-                    "FIDELIS image engine unavailable."
-                );
-
-            }
-
-
-            const result =
-                await window.FidelisImage.enhance(
-                    file,
-                    quality
-                );
-
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    82,
-                    "Checking facial preservation..."
-                );
-
-            }
-
-
-            await this.delay(200);
-
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    94,
-                    "Finalizing enhanced image..."
-                );
-
-            }
-
-
-            await this.delay(200);
-
-
-            if (
-                typeof onProgress ===
-                "function"
-            ) {
-
-                onProgress(
-                    100,
-                    "Complete."
-                );
-
-            }
-
-
-            return {
-
-                ...result,
-
-                aiProcessed:
-                    false,
-
-                fallback:
-                    true,
-
-                model:
-                    model.name,
-
-                faceProtection:
-                    aiConfig,
-
-                analysis:
-                    faceAnalysis
-
-            };
-
-        },
-
-
-        /* =====================================================
-           LOAD IMAGE
-           ===================================================== */
-
-        loadImage(file) {
-
-            return new Promise(
-                (
-                    resolve,
-                    reject
-                ) => {
-
-                    const url =
-                        URL.createObjectURL(
-                            file
-                        );
-
-                    const image =
-                        new Image();
-
-
-                    image.onload = () => {
+                image.onload =
+                    function () {
 
                         URL.revokeObjectURL(
                             url
                         );
 
-                        resolve(
-                            image
-                        );
-
+                        resolve(image);
                     };
 
-
-                    image.onerror = () => {
+                image.onerror =
+                    function () {
 
                         URL.revokeObjectURL(
                             url
@@ -409,62 +166,548 @@
 
                         reject(
                             new Error(
-                                "Failed to load image."
+                                "Gagal membaca gambar."
                             )
                         );
-
                     };
 
+                image.src = url;
+            }
+        );
+    }
 
-                    image.src =
-                        url;
+    /*
+     * =========================
+     * MODEL SELECTION
+     * =========================
+     */
 
+    function getModelKey(quality) {
+
+        switch (quality) {
+
+            case "standard":
+                return "basic";
+
+            case "high":
+                return "high";
+
+            case "ultra":
+                return "ultra";
+
+            default:
+                return "basic";
+        }
+    }
+
+    /*
+     * =========================
+     * OUTPUT VALIDATION
+     * =========================
+     */
+
+    function validateOutput(
+        output,
+        model
+    ) {
+
+        if (!output) {
+
+            throw new Error(
+                "AI menghasilkan output kosong."
+            );
+        }
+
+        const width =
+            output.width ||
+            0;
+
+        const height =
+            output.height ||
+            0;
+
+        if (!width || !height) {
+
+            throw new Error(
+                "Output AI memiliki dimensi tidak valid."
+            );
+        }
+
+        if (
+            width >
+            SETTINGS.maxOutputResolution ||
+            height >
+            SETTINGS.maxOutputResolution
+        ) {
+
+            throw new Error(
+                "Output AI melebihi resolusi maksimum."
+            );
+        }
+
+        return true;
+    }
+
+    /*
+     * =========================
+     * ENHANCE
+     * =========================
+     */
+
+    async function enhance(
+        file,
+        quality = "ultra",
+        onProgress
+    ) {
+
+        validateFile(file);
+
+        /*
+         * Ultra is VVIP.
+         */
+
+        if (
+            quality === "ultra" &&
+            window.FidelisTier &&
+            !FidelisTier.canUse("ultra")
+        ) {
+
+            throw new Error(
+                "Ultra AI membutuhkan FIDELIS VVIP."
+            );
+        }
+
+        /*
+         * Initialize inference engine.
+         */
+
+        await init();
+
+        /*
+         * Load source image.
+         */
+
+        if (typeof onProgress === "function") {
+            onProgress(5);
+        }
+
+        const image =
+            await loadImage(file);
+
+        /*
+         * Face protection.
+         */
+
+        let faceGuard = null;
+
+        if (window.FidelisFaceGuard) {
+
+            faceGuard =
+                await FidelisFaceGuard.prepare(
+                    image,
+                    {
+                        preserveIdentity:
+                            SETTINGS.preserveIdentity,
+
+                        preserveStructure:
+                            SETTINGS.preserveFaceStructure,
+
+                        preserveSkinTexture:
+                            SETTINGS.preserveSkinTexture
+                    }
+                );
+        }
+
+        if (typeof onProgress === "function") {
+            onProgress(12);
+        }
+
+        /*
+         * Select model.
+         */
+
+        const modelKey =
+            getModelKey(quality);
+
+        if (!window.FidelisModelLoader) {
+
+            throw new Error(
+                "FIDELIS AI Model Loader belum tersedia."
+            );
+        }
+
+        const modelConfig =
+            FidelisModelLoader.getModelConfig(
+                modelKey
+            );
+
+        if (!modelConfig) {
+
+            throw new Error(
+                "Konfigurasi model AI tidak ditemukan."
+            );
+        }
+
+        /*
+         * Check input resolution.
+         */
+
+        if (window.FidelisInference) {
+
+            const validation =
+                FidelisInference.validateInput(
+                    image,
+                    modelConfig
+                );
+
+            if (!validation.valid) {
+
+                throw new Error(
+                    validation.reason
+                );
+            }
+        }
+
+        /*
+         * Load model.
+         */
+
+        const model =
+            await FidelisModelLoader.load(
+                modelKey,
+                {
+                    onProgress:
+                        function (progress) {
+
+                            /*
+                             * Model loading occupies
+                             * roughly 15-45%.
+                             */
+
+                            const mapped =
+                                15 +
+                                progress * 0.30;
+
+                            if (
+                                typeof onProgress ===
+                                "function"
+                            ) {
+
+                                onProgress(
+                                    mapped
+                                );
+                            }
+                        }
                 }
             );
 
-        },
+        /*
+         * If model asset isn't connected,
+         * STOP instead of pretending.
+         */
 
-
-        /* =====================================================
-           DELAY
-           ===================================================== */
-
-        delay(ms) {
-
-            return new Promise(
-                resolve =>
-                    setTimeout(
-                        resolve,
-                        ms
-                    )
-            );
-
-        },
-
-
-        /* =====================================================
-           SETTINGS
-           ===================================================== */
-
-        setIdentityProtection(
-            enabled
+        if (
+            !model ||
+            !model.ready ||
+            !model.available
         ) {
 
-            this.settings
-                .preserveIdentity =
-                Boolean(enabled);
-
-        },
-
-
-        getSettings() {
-
-            return {
-                ...this.settings
-            };
-
+            throw new Error(
+                "Model AI nyata belum terhubung. " +
+                "FIDELIS tidak akan memalsukan proses AI."
+            );
         }
 
+        /*
+         * Convert image -> tensor.
+         */
+
+        if (
+            !window.FidelisInference
+        ) {
+
+            throw new Error(
+                "AI inference engine tidak tersedia."
+            );
+        }
+
+        const tensor =
+            await FidelisInference.imageToTensor(
+                image
+            );
+
+        if (typeof onProgress === "function") {
+            onProgress(50);
+        }
+
+        /*
+         * Prepare inference options.
+         */
+
+        const inferenceOptions = {
+
+            preserveIdentity:
+                SETTINGS.preserveIdentity,
+
+            preserveFaceStructure:
+                SETTINGS.preserveFaceStructure,
+
+            preserveSkinTexture:
+                SETTINGS.preserveSkinTexture,
+
+            avoidFaceGeneration:
+                SETTINGS.avoidFaceGeneration,
+
+            faceGuard,
+
+            scale:
+                model.scale,
+
+            onProgress:
+                function (progress) {
+
+                    const mapped =
+                        50 +
+                        progress * 0.40;
+
+                    if (
+                        typeof onProgress ===
+                        "function"
+                    ) {
+
+                        onProgress(
+                            mapped
+                        );
+                    }
+                }
+        };
+
+        /*
+         * REAL INFERENCE
+         */
+
+        const output =
+            await FidelisInference.run(
+                model,
+                tensor,
+                inferenceOptions
+            );
+
+        /*
+         * Validate AI output.
+         */
+
+        validateOutput(
+            output,
+            model
+        );
+
+        if (typeof onProgress === "function") {
+            onProgress(92);
+        }
+
+        /*
+         * Convert tensor output to image
+         * if runtime returns tensor data.
+         */
+
+        let finalCanvas = null;
+
+        if (
+            output.data &&
+            output.width &&
+            output.height
+        ) {
+
+            finalCanvas =
+                FidelisInference.tensorToImage(
+                    output.data,
+                    output.width,
+                    output.height
+                );
+
+        } else if (
+            output.canvas
+        ) {
+
+            finalCanvas =
+                output.canvas;
+
+        } else {
+
+            throw new Error(
+                "Format output AI tidak dikenali."
+            );
+        }
+
+        /*
+         * Apply final face guard.
+         */
+
+        if (
+            window.FidelisFaceGuard
+        ) {
+
+            finalCanvas =
+                await FidelisFaceGuard.finalize(
+                    finalCanvas,
+                    image,
+                    faceGuard
+                );
+        }
+
+        if (typeof onProgress === "function") {
+            onProgress(96);
+        }
+
+        /*
+         * Export.
+         */
+
+        const blob =
+            await canvasToBlob(
+                finalCanvas,
+                "image/jpeg",
+                0.96
+            );
+
+        if (!blob) {
+
+            throw new Error(
+                "Gagal membuat file output AI."
+            );
+        }
+
+        if (typeof onProgress === "function") {
+            onProgress(100);
+        }
+
+        return {
+
+            blob,
+
+            width:
+                finalCanvas.width,
+
+            height:
+                finalCanvas.height,
+
+            originalWidth:
+                image.naturalWidth,
+
+            originalHeight:
+                image.naturalHeight,
+
+            quality,
+
+            model:
+                model.name,
+
+            aiProcessed: true,
+
+            fallback: false,
+
+            engine:
+                "FIDELIS AI Inference",
+
+            faceProtection: {
+                identity:
+                    SETTINGS.preserveIdentity,
+
+                structure:
+                    SETTINGS.preserveFaceStructure,
+
+                skinTexture:
+                    SETTINGS.preserveSkinTexture
+            },
+
+            faceGuard
+        };
+    }
+
+    /*
+     * =========================
+     * CANVAS EXPORT
+     * =========================
+     */
+
+    function canvasToBlob(
+        canvas,
+        type,
+        quality
+    ) {
+
+        return new Promise(
+            function (resolve) {
+
+                canvas.toBlob(
+                    function (blob) {
+                        resolve(blob);
+                    },
+                    type,
+                    quality
+                );
+            }
+        );
+    }
+
+    /*
+     * =========================
+     * SETTINGS
+     * =========================
+     */
+
+    function getSettings() {
+
+        return {
+            ...SETTINGS
+        };
+    }
+
+    function updateSettings(
+        changes = {}
+    ) {
+
+        Object.keys(SETTINGS)
+            .forEach(function (key) {
+
+                if (
+                    Object.prototype
+                        .hasOwnProperty
+                        .call(
+                            changes,
+                            key
+                        )
+                ) {
+
+                    SETTINGS[key] =
+                        Boolean(
+                            changes[key]
+                        );
+                }
+
+            });
+
+        return getSettings();
+    }
+
+    /*
+     * =========================
+     * PUBLIC API
+     * =========================
+     */
+
+    window.FidelisImageAI = {
+
+        init,
+
+        enhance,
+
+        getStatus,
+
+        getSettings,
+
+        updateSettings
     };
 
 })();
