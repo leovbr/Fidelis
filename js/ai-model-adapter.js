@@ -1,759 +1,830 @@
+/* =========================================================
+   FIDELIS AI MODEL ADAPTER
+   Image <-> ONNX Tensor Converter
+   ========================================================= */
+
 (function () {
-    "use strict";
 
-    /*
-     * FIDELIS AI MODEL ADAPTER
-     * =========================
-     *
-     * Converts FIDELIS image tensors into
-     * the format expected by a super-resolution
-     * ONNX model and converts the output back.
-     *
-     * This layer exists because different
-     * ONNX models may use:
-     *
-     * RGB / BGR
-     * NCHW / NHWC
-     * 0..1 / 0..255 / -1..1
-     *
-     * The model configuration determines
-     * which format is used.
-     */
+  "use strict";
 
-    const DEFAULT_CONFIG = {
 
-        inputLayout: "NCHW",
+  const Adapter = {
 
-        outputLayout: "NCHW",
 
-        channels: 3,
+    /* =====================================================
+       NORMALIZE MODEL
+       ===================================================== */
 
-        inputRange: "0_1",
+    normalizeModel(model) {
 
-        outputRange: "0_1",
+      const source =
+        model || {};
 
-        channelOrder: "RGB",
 
-        outputChannelOrder: "RGB"
-    };
+      return {
 
-    /*
-     * =========================
-     * GET CONFIG
-     * =========================
-     */
+        inputLayout:
+          String(
+            source.inputLayout ||
+            source.input_layout ||
+            "NCHW"
+          ).toUpperCase(),
 
-    function getConfig(
-        model
+
+        outputLayout:
+          String(
+            source.outputLayout ||
+            source.output_layout ||
+            "NCHW"
+          ).toUpperCase(),
+
+
+        inputChannels:
+          Number(
+            source.inputChannels ||
+            source.input_channels ||
+            3
+          ),
+
+
+        outputChannels:
+          Number(
+            source.outputChannels ||
+            source.output_channels ||
+            3
+          ),
+
+
+        inputRange:
+          source.inputRange ||
+          source.input_range ||
+          "0..1",
+
+
+        outputRange:
+          source.outputRange ||
+          source.output_range ||
+          "0..1",
+
+
+        inputColor:
+          String(
+            source.inputColor ||
+            source.input_color ||
+            "RGB"
+          ).toUpperCase(),
+
+
+        outputColor:
+          String(
+            source.outputColor ||
+            source.output_color ||
+            "RGB"
+          ).toUpperCase()
+
+      };
+
+    },
+
+
+    /* =====================================================
+       IMAGE DATA → TENSOR
+       ===================================================== */
+
+    createInputTensor(
+      imageData,
+      model
     ) {
 
-        const config =
-            model &&
-            model.adapter
-                ? model.adapter
-                : {};
+      if (!imageData) {
 
-        return {
-
-            ...DEFAULT_CONFIG,
-
-            ...config
-        };
-    }
-
-    /*
-     * =========================
-     * CREATE INPUT TENSOR
-     * =========================
-     */
-
-    function createInputTensor(
-        ort,
-        imageData,
-        model
-    ) {
-
-        if (!ort) {
-
-            throw new Error(
-                "ONNX Runtime tidak tersedia."
-            );
-        }
-
-        if (
-            !imageData ||
-            !imageData.tensor
-        ) {
-
-            throw new Error(
-                "Input image tensor tidak valid."
-            );
-        }
-
-        const config =
-            getConfig(
-                model
-            );
-
-        const source =
-            imageData.tensor;
-
-        const width =
-            imageData.width;
-
-        const height =
-            imageData.height;
-
-        /*
-         * Already NCHW RGB float32.
-         */
-
-        let data =
-            new Float32Array(
-                source.data
-            );
-
-        /*
-         * Convert value range.
-         */
-
-        data =
-            convertInputRange(
-                data,
-                config.inputRange
-            );
-
-        /*
-         * Convert RGB/BGR.
-         */
-
-        if (
-            config.channelOrder ===
-            "BGR"
-        ) {
-
-            data =
-                swapRGB(
-                    data,
-                    width,
-                    height
-                );
-        }
-
-        /*
-         * Convert layout.
-         */
-
-        if (
-            config.inputLayout ===
-            "NHWC"
-        ) {
-
-            data =
-                nchwToNhwc(
-                    data,
-                    width,
-                    height
-                );
-
-            return new ort.Tensor(
-                "float32",
-                data,
-                [
-                    1,
-                    height,
-                    width,
-                    3
-                ]
-            );
-        }
-
-        return new ort.Tensor(
-            "float32",
-            data,
-            [
-                1,
-                3,
-                height,
-                width
-            ]
+        throw new Error(
+          "FIDELIS: Missing image data."
         );
-    }
 
-    /*
-     * =========================
-     * OUTPUT NORMALIZATION
-     * =========================
-     */
+      }
 
-    function normalizeOutput(
-        tensor,
-        model
-    ) {
 
-        if (!tensor) {
+      if (
+        typeof ort === "undefined" ||
+        !ort.Tensor
+      ) {
 
-            throw new Error(
-                "Output tensor kosong."
-            );
-        }
+        throw new Error(
+          "FIDELIS: ONNX Runtime Tensor unavailable."
+        );
 
-        const config =
-            getConfig(
-                model
-            );
+      }
 
-        let dims =
-            Array.from(
-                tensor.dims
-            );
 
-        let data =
-            new Float32Array(
-                tensor.data
-            );
+      const config =
+        this.normalizeModel(
+          model
+        );
 
-        let width;
 
-        let height;
+      const width =
+        Number(
+          imageData.width
+        );
 
-        /*
-         * Convert NHWC → NCHW.
-         */
 
-        if (
-            config.outputLayout ===
-            "NHWC"
+      const height =
+        Number(
+          imageData.height
+        );
+
+
+      if (
+        !width ||
+        !height
+      ) {
+
+        throw new Error(
+          "FIDELIS: Invalid image dimensions."
+        );
+
+      }
+
+
+      const pixels =
+        imageData.data;
+
+
+      if (
+        !pixels ||
+        pixels.length <
+        width * height * 4
+      ) {
+
+        throw new Error(
+          "FIDELIS: Invalid RGBA image data."
+        );
+
+      }
+
+
+      if (
+        config.inputChannels !== 3
+      ) {
+
+        throw new Error(
+          "FIDELIS: Only 3-channel RGB models are supported."
+        );
+
+      }
+
+
+      /*
+       NCHW:
+       [R channel]
+       [G channel]
+       [B channel]
+       */
+
+      const channelSize =
+        width * height;
+
+
+      const tensorData =
+        new Float32Array(
+          channelSize * 3
+        );
+
+
+      const rOffset =
+        0;
+
+
+      const gOffset =
+        channelSize;
+
+
+      const bOffset =
+        channelSize * 2;
+
+
+      for (
+        let y = 0;
+        y < height;
+        y++
+      ) {
+
+        for (
+          let x = 0;
+          x < width;
+          x++
         ) {
 
-            if (
-                dims.length !== 4
-            ) {
+          const pixelIndex =
+            (
+              y * width +
+              x
+            ) * 4;
 
-                throw new Error(
-                    "Output NHWC tidak valid."
-                );
-            }
 
-            height =
-                dims[1];
+          let r =
+            pixels[pixelIndex];
 
-            width =
-                dims[2];
 
-            data =
-                nhwcToNchw(
-                    data,
-                    width,
-                    height
-                );
+          let g =
+            pixels[pixelIndex + 1];
 
-            dims = [
-                1,
-                3,
-                height,
-                width
-            ];
-        } else {
 
-            if (
-                dims.length !== 4
-            ) {
+          let b =
+            pixels[pixelIndex + 2];
 
-                throw new Error(
-                    "Output NCHW tidak valid."
-                );
-            }
 
-            height =
-                dims[2];
+          /*
+           RGB → BGR if required.
+           */
 
-            width =
-                dims[3];
-        }
-
-        /*
-         * RGB/BGR correction.
-         */
-
-        if (
-            config.outputChannelOrder ===
+          if (
+            config.inputColor ===
             "BGR"
-        ) {
+          ) {
 
-            data =
-                swapRGB(
-                    data,
-                    width,
-                    height
-                );
+            const temp =
+              r;
+
+            r = b;
+            b = temp;
+
+          }
+
+
+          /*
+           0..255 → 0..1
+           */
+
+          if (
+            config.inputRange ===
+            "0..1"
+          ) {
+
+            r /= 255;
+            g /= 255;
+            b /= 255;
+
+          }
+
+
+          /*
+           -1..1
+           */
+
+          else if (
+            config.inputRange ===
+            "-1..1"
+          ) {
+
+            r =
+              (
+                r / 255
+              ) * 2 - 1;
+
+
+            g =
+              (
+                g / 255
+              ) * 2 - 1;
+
+
+            b =
+              (
+                b / 255
+              ) * 2 - 1;
+
+          }
+
+
+          const index =
+            y * width + x;
+
+
+          tensorData[
+            rOffset + index
+          ] = r;
+
+
+          tensorData[
+            gOffset + index
+          ] = g;
+
+
+          tensorData[
+            bOffset + index
+          ] = b;
+
         }
 
-        /*
-         * Convert output range
-         * to 0..1.
-         */
+      }
 
-        data =
-            convertOutputRange(
-                data,
-                config.outputRange
-            );
+
+      /*
+       Currently Real-ESRGAN uses NCHW.
+       */
+
+      if (
+        config.inputLayout !==
+        "NCHW"
+      ) {
+
+        throw new Error(
+          "FIDELIS: This adapter currently expects NCHW input."
+        );
+
+      }
+
+
+      return new ort.Tensor(
+        "float32",
+        tensorData,
+        [
+          1,
+          3,
+          height,
+          width
+        ]
+      );
+
+    },
+
+
+    /* =====================================================
+       CANVAS → INPUT IMAGE DATA
+       ===================================================== */
+
+    canvasToImageData(canvas) {
+
+      if (!canvas) {
+
+        throw new Error(
+          "FIDELIS: Canvas missing."
+        );
+
+      }
+
+
+      const ctx =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently: true
+          }
+        );
+
+
+      if (!ctx) {
+
+        throw new Error(
+          "FIDELIS: Canvas context unavailable."
+        );
+
+      }
+
+
+      return ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+    },
+
+
+    /* =====================================================
+       TENSOR → CANVAS
+       ===================================================== */
+
+    outputToCanvas(
+      tensor,
+      model
+    ) {
+
+      if (!tensor) {
+
+        throw new Error(
+          "FIDELIS: Missing model output."
+        );
+
+      }
+
+
+      const config =
+        this.normalizeModel(
+          model
+        );
+
+
+      const dims =
+        Array.from(
+          tensor.dims || []
+        );
+
+
+      if (
+        dims.length !== 4
+      ) {
+
+        throw new Error(
+          "FIDELIS: Unsupported output tensor dimensions."
+        );
+
+      }
+
+
+      let channels;
+      let height;
+      let width;
+
+
+      /*
+       NCHW:
+       [1,C,H,W]
+       */
+
+      if (
+        config.outputLayout ===
+        "NCHW"
+      ) {
+
+        channels =
+          dims[1];
+
+        height =
+          dims[2];
+
+        width =
+          dims[3];
+
+      }
+
+
+      /*
+       NHWC:
+       [1,H,W,C]
+       */
+
+      else if (
+        config.outputLayout ===
+        "NHWC"
+      ) {
+
+        height =
+          dims[1];
+
+        width =
+          dims[2];
+
+        channels =
+          dims[3];
+
+      }
+
+
+      else {
+
+        throw new Error(
+          "FIDELIS: Unsupported output layout."
+        );
+
+      }
+
+
+      if (
+        channels < 3
+      ) {
+
+        throw new Error(
+          "FIDELIS: Model output has fewer than 3 channels."
+        );
+
+      }
+
+
+      const output =
+        tensor.data;
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        width;
+
+      canvas.height =
+        height;
+
+
+      const ctx =
+        canvas.getContext(
+          "2d"
+        );
+
+
+      const imageData =
+        ctx.createImageData(
+          width,
+          height
+        );
+
+
+      const pixels =
+        imageData.data;
+
+
+      const planeSize =
+        width * height;
+
+
+      for (
+        let y = 0;
+        y < height;
+        y++
+      ) {
+
+        for (
+          let x = 0;
+          x < width;
+          x++
+        ) {
+
+          const pixel =
+            y * width + x;
+
+
+          let r;
+          let g;
+          let b;
+
+
+          if (
+            config.outputLayout ===
+            "NCHW"
+          ) {
+
+            r =
+              output[
+                pixel
+              ];
+
+
+            g =
+              output[
+                planeSize + pixel
+              ];
+
+
+            b =
+              output[
+                planeSize * 2 + pixel
+              ];
+
+          }
+
+
+          else {
+
+            const index =
+              (
+                pixel *
+                channels
+              );
+
+
+            r =
+              output[index];
+
+
+            g =
+              output[index + 1];
+
+
+            b =
+              output[index + 2];
+
+          }
+
+
+          /*
+           Convert output range.
+           */
+
+          if (
+            config.outputRange ===
+            "0..1"
+          ) {
+
+            r *= 255;
+            g *= 255;
+            b *= 255;
+
+          }
+
+
+          else if (
+            config.outputRange ===
+            "-1..1"
+          ) {
+
+            r =
+              (
+                r + 1
+              ) * 127.5;
+
+
+            g =
+              (
+                g + 1
+              ) * 127.5;
+
+
+            b =
+              (
+                b + 1
+              ) * 127.5;
+
+          }
+
+
+          /*
+           BGR → RGB.
+           */
+
+          if (
+            config.outputColor ===
+            "BGR"
+          ) {
+
+            const temp =
+              r;
+
+            r = b;
+            b = temp;
+
+          }
+
+
+          const index =
+            pixel * 4;
+
+
+          pixels[index] =
+            this.clampByte(r);
+
+
+          pixels[index + 1] =
+            this.clampByte(g);
+
+
+          pixels[index + 2] =
+            this.clampByte(b);
+
+
+          pixels[index + 3] =
+            255;
+
+        }
+
+      }
+
+
+      ctx.putImageData(
+        imageData,
+        0,
+        0
+      );
+
+
+      return canvas;
+
+    },
+
+
+    /* =====================================================
+       CLAMP
+       ===================================================== */
+
+    clampByte(value) {
+
+      if (!Number.isFinite(value)) {
+        return 0;
+      }
+
+
+      return Math.max(
+        0,
+        Math.min(
+          255,
+          Math.round(value)
+        )
+      );
+
+    },
+
+
+    /* =====================================================
+       VALIDATE TENSOR
+       ===================================================== */
+
+    validateTensor(
+      tensor
+    ) {
+
+      if (!tensor) {
 
         return {
-
-            data,
-
-            dims,
-
-            width,
-
-            height,
-
-            channels: 3,
-
-            layout: "NCHW",
-
-            range: "0_1"
+          valid: false,
+          reason: "Tensor missing."
         };
-    }
 
-    /*
-     * =========================
-     * INPUT RANGE
-     * =========================
-     */
+      }
 
-    function convertInputRange(
-        data,
-        range
-    ) {
 
-        const output =
-            new Float32Array(
-                data.length
-            );
-
-        for (
-            let i = 0;
-            i < data.length;
-            i++
-        ) {
-
-            const value =
-                data[i];
-
-            if (
-                range ===
-                "0_255"
-            ) {
-
-                output[i] =
-                    value * 255;
-
-            } else if (
-                range ===
-                "-1_1"
-            ) {
-
-                output[i] =
-                    value * 2 - 1;
-
-            } else {
-
-                /*
-                 * 0..1
-                 */
-
-                output[i] =
-                    value;
-            }
-        }
-
-        return output;
-    }
-
-    /*
-     * =========================
-     * OUTPUT RANGE
-     * =========================
-     */
-
-    function convertOutputRange(
-        data,
-        range
-    ) {
-
-        const output =
-            new Float32Array(
-                data.length
-            );
-
-        for (
-            let i = 0;
-            i < data.length;
-            i++
-        ) {
-
-            const value =
-                data[i];
-
-            if (
-                range ===
-                "0_255"
-            ) {
-
-                output[i] =
-                    value / 255;
-
-            } else if (
-                range ===
-                "-1_1"
-            ) {
-
-                output[i] =
-                    (
-                        value + 1
-                    ) / 2;
-
-            } else {
-
-                output[i] =
-                    value;
-            }
-
-            /*
-             * Safety clamp.
-             */
-
-            output[i] =
-                Math.max(
-                    0,
-                    Math.min(
-                        1,
-                        output[i]
-                    )
-                );
-        }
-
-        return output;
-    }
-
-    /*
-     * =========================
-     * RGB ↔ BGR
-     * =========================
-     */
-
-    function swapRGB(
-        data,
-        width,
-        height
-    ) {
-
-        const pixelCount =
-            width * height;
-
-        const output =
-            new Float32Array(
-                data.length
-            );
-
-        /*
-         * NCHW:
-         *
-         * R plane
-         * G plane
-         * B plane
-         */
-
-        for (
-            let i = 0;
-            i < pixelCount;
-            i++
-        ) {
-
-            output[i] =
-                data[
-                    pixelCount * 2 +
-                    i
-                ];
-
-            output[
-                pixelCount + i
-            ] =
-                data[
-                    pixelCount + i
-                ];
-
-            output[
-                pixelCount * 2 + i
-            ] =
-                data[i];
-        }
-
-        return output;
-    }
-
-    /*
-     * =========================
-     * NCHW → NHWC
-     * =========================
-     */
-
-    function nchwToNhwc(
-        data,
-        width,
-        height
-    ) {
-
-        const pixelCount =
-            width * height;
-
-        const output =
-            new Float32Array(
-                pixelCount * 3
-            );
-
-        for (
-            let i = 0;
-            i < pixelCount;
-            i++
-        ) {
-
-            output[
-                i * 3
-            ] =
-                data[i];
-
-            output[
-                i * 3 + 1
-            ] =
-                data[
-                    pixelCount + i
-                ];
-
-            output[
-                i * 3 + 2
-            ] =
-                data[
-                    pixelCount * 2 + i
-                ];
-        }
-
-        return output;
-    }
-
-    /*
-     * =========================
-     * NHWC → NCHW
-     * =========================
-     */
-
-    function nhwcToNchw(
-        data,
-        width,
-        height
-    ) {
-
-        const pixelCount =
-            width * height;
-
-        const output =
-            new Float32Array(
-                pixelCount * 3
-            );
-
-        for (
-            let i = 0;
-            i < pixelCount;
-            i++
-        ) {
-
-            output[i] =
-                data[
-                    i * 3
-                ];
-
-            output[
-                pixelCount + i
-            ] =
-                data[
-                    i * 3 + 1
-                ];
-
-            output[
-                pixelCount * 2 + i
-            ] =
-                data[
-                    i * 3 + 2
-                ];
-        }
-
-        return output;
-    }
-
-    /*
-     * =========================
-     * OUTPUT VALIDATION
-     * =========================
-     */
-
-    function validateOutput(
-        output,
-        model
-    ) {
-
-        if (!output) {
-
-            return {
-
-                valid: false,
-
-                reason:
-                    "Output kosong."
-            };
-        }
-
-        if (
-            !output.data ||
-            !output.dims
-        ) {
-
-            return {
-
-                valid: false,
-
-                reason:
-                    "Output tensor tidak valid."
-            };
-        }
-
-        if (
-            output.dims.length !== 4
-        ) {
-
-            return {
-
-                valid: false,
-
-                reason:
-                    "Output harus memiliki 4 dimensi."
-            };
-        }
-
-        const channels =
-            output.dims[1];
-
-        if (
-            channels !== 3
-        ) {
-
-            return {
-
-                valid: false,
-
-                reason:
-                    "Model output harus RGB 3-channel."
-            };
-        }
-
-        const maxOutput =
-            model &&
-            model.maxOutput
-                ? model.maxOutput
-                : 8192;
-
-        const width =
-            output.dims[3];
-
-        const height =
-            output.dims[2];
-
-        if (
-            width > maxOutput ||
-            height > maxOutput
-        ) {
-
-            return {
-
-                valid: false,
-
-                reason:
-                    "Output model melebihi batas resolusi."
-            };
-        }
+      if (
+        !tensor.dims ||
+        !tensor.data
+      ) {
 
         return {
-            valid: true
+          valid: false,
+          reason: "Tensor data missing."
         };
-    }
 
-    /*
-     * =========================
-     * CONFIG PRESETS
-     * =========================
-     */
+      }
 
-    function createPreset(
-        type
+
+      return {
+
+        valid: true,
+
+        dims:
+          Array.from(
+            tensor.dims
+          ),
+
+        type:
+          tensor.type,
+
+        size:
+          tensor.data.length
+
+      };
+
+    },
+
+
+    /* =====================================================
+       MODEL PRESET
+       ===================================================== */
+
+    createPreset(
+      scale = 4
     ) {
 
-        const key =
-            String(
-                type || "default"
-            )
-                .toLowerCase();
+      return {
 
-        /*
-         * Generic RGB NCHW model.
-         */
+        inputLayout:
+          "NCHW",
 
-        if (
-            key === "realesrgan" ||
-            key === "real-esrgan"
-        ) {
+        outputLayout:
+          "NCHW",
 
-            return {
+        inputChannels:
+          3,
 
-                inputLayout: "NCHW",
+        outputChannels:
+          3,
 
-                outputLayout: "NCHW",
+        inputRange:
+          "0..1",
 
-                channels: 3,
+        outputRange:
+          "0..1",
 
-                inputRange: "0_1",
+        inputColor:
+          "RGB",
 
-                outputRange: "0_1",
+        outputColor:
+          "RGB",
 
-                channelOrder: "RGB",
+        scale:
+          Number(scale)
 
-                outputChannelOrder: "RGB"
-            };
-        }
+      };
 
-        return {
-            ...DEFAULT_CONFIG
-        };
     }
 
-    /*
-     * =========================
-     * PUBLIC API
-     * =========================
-     */
+  };
 
-    window.FidelisModelAdapter = {
 
-        getConfig,
+  window.FidelisAIModelAdapter =
+    Adapter;
 
-        createInputTensor,
-
-        normalizeOutput,
-
-        validateOutput,
-
-        createPreset
-    };
 
 })();
