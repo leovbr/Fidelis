@@ -2,30 +2,37 @@
     "use strict";
 
     /*
-     * FIDELIS AI INFERENCE ENGINE
-     * --------------------------------
+     * FIDELIS AI INFERENCE
+     * =========================
      *
-     * Purpose:
-     * - Connect loaded AI models to image processing
-     * - Detect available browser acceleration
-     * - Prepare tensors
-     * - Preserve image dimensions
-     * - Prevent fake AI processing
+     * Real ONNX Runtime Web inference.
      *
-     * IMPORTANT:
-     * This engine only performs real inference
-     * when a compatible model/runtime is connected.
+     * Pipeline:
+     *
+     * Image
+     *   ↓
+     * Tensor
+     *   ↓
+     * ONNX Session
+     *   ↓
+     * Model inference
+     *   ↓
+     * Output Tensor
+     *   ↓
+     * Image
+     *
+     * No fake AI fallback is performed.
      */
 
     let initialized = false;
 
-    let backend = "none";
+    let activeSession = null;
 
-    let runtime = null;
+    let activeModelId = null;
 
     /*
      * =========================
-     * INITIALIZATION
+     * INITIALIZE
      * =========================
      */
 
@@ -35,16 +42,14 @@
             return getStatus();
         }
 
-        backend = detectBackend();
+        if (!window.FidelisRuntime) {
 
-        /*
-         * We intentionally do NOT import
-         * an external AI runtime here yet.
-         *
-         * The next integration stage can
-         * connect ONNX Runtime Web,
-         * WebGPU, or another runtime.
-         */
+            throw new Error(
+                "FIDELIS AI Runtime belum tersedia."
+            );
+        }
+
+        await FidelisRuntime.init();
 
         initialized = true;
 
@@ -53,111 +58,76 @@
 
     /*
      * =========================
-     * BACKEND DETECTION
+     * LOAD MODEL SESSION
      * =========================
      */
 
-    function detectBackend() {
-
-        if (
-            typeof navigator !== "undefined" &&
-            "gpu" in navigator
-        ) {
-
-            return "webgpu";
-        }
-
-        if (
-            typeof document !== "undefined"
-        ) {
-
-            try {
-
-                const canvas =
-                    document.createElement(
-                        "canvas"
-                    );
-
-                const gl =
-                    canvas.getContext(
-                        "webgl2"
-                    ) ||
-                    canvas.getContext(
-                        "webgl"
-                    );
-
-                if (gl) {
-                    return "webgl";
-                }
-
-            } catch (error) {
-
-                console.warn(
-                    "WebGL detection failed:",
-                    error
-                );
-            }
-        }
-
-        if (
-            typeof WebAssembly !==
-            "undefined"
-        ) {
-
-            return "wasm";
-        }
-
-        return "none";
-    }
-
-    /*
-     * =========================
-     * STATUS
-     * =========================
-     */
-
-    function getStatus() {
-
-        return {
-
-            initialized,
-
-            backend,
-
-            runtimeAvailable:
-                runtime !== null,
-
-            ready:
-                initialized &&
-                runtime !== null
-        };
-    }
-
-    /*
-     * =========================
-     * RUNTIME
-     * =========================
-     */
-
-    function setRuntime(
-        runtimeInstance
+    async function loadModel(
+        model,
+        options = {}
     ) {
 
-        runtime =
-            runtimeInstance || null;
+        if (!model) {
 
-        return getStatus();
-    }
+            throw new Error(
+                "Model tidak ditemukan."
+            );
+        }
 
-    function hasRuntime() {
+        if (!model.ready) {
 
-        return runtime !== null;
+            throw new Error(
+                "Model belum siap."
+            );
+        }
+
+        if (!model.data) {
+
+            throw new Error(
+                "Data ONNX model tidak tersedia."
+            );
+        }
+
+        await init();
+
+        /*
+         * Reuse current session when
+         * the same model is already active.
+         */
+
+        if (
+            activeSession &&
+            activeModelId === model.id
+        ) {
+
+            return activeSession;
+        }
+
+        /*
+         * Dispose previous session.
+         */
+
+        await disposeSession();
+
+        activeSession =
+            await FidelisRuntime
+                .createSession(
+                    model.data,
+                    options
+                );
+
+        activeModelId =
+            model.id;
+
+        return activeSession;
     }
 
     /*
      * =========================
-     * IMAGE PREPARATION
+     * IMAGE -> TENSOR
      * =========================
+     *
+     * Produces NCHW RGB float32.
      */
 
     async function imageToTensor(
@@ -182,7 +152,10 @@
             image.videoHeight ||
             image.height;
 
-        if (!width || !height) {
+        if (
+            !width ||
+            !height
+        ) {
 
             throw new Error(
                 "Dimensi image tidak valid."
@@ -194,14 +167,18 @@
                 "canvas"
             );
 
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width =
+            width;
+
+        canvas.height =
+            height;
 
         const context =
             canvas.getContext(
                 "2d",
                 {
-                    willReadFrequently: true
+                    willReadFrequently:
+                        true
                 }
             );
 
@@ -221,17 +198,29 @@
                 height
             );
 
-        /*
-         * RGBA -> normalized RGB
-         */
-
         const pixelCount =
             width * height;
 
-        const tensor =
+        /*
+         * NCHW:
+         *
+         * RRRR...
+         * GGGG...
+         * BBBB...
+         */
+
+        const tensorData =
             new Float32Array(
                 pixelCount * 3
             );
+
+        const redOffset = 0;
+
+        const greenOffset =
+            pixelCount;
+
+        const blueOffset =
+            pixelCount * 2;
 
         for (
             let i = 0;
@@ -242,25 +231,47 @@
             const src =
                 i * 4;
 
-            const dst =
-                i * 3;
-
-            tensor[dst] =
+            tensorData[
+                redOffset + i
+            ] =
                 imageData.data[src] /
                 255;
 
-            tensor[dst + 1] =
+            tensorData[
+                greenOffset + i
+            ] =
                 imageData.data[src + 1] /
                 255;
 
-            tensor[dst + 2] =
+            tensorData[
+                blueOffset + i
+            ] =
                 imageData.data[src + 2] /
                 255;
         }
 
+        /*
+         * Actual ONNX Tensor.
+         */
+
+        const ort =
+            FidelisRuntime.getORT();
+
+        const tensor =
+            new ort.Tensor(
+                "float32",
+                tensorData,
+                [
+                    1,
+                    3,
+                    height,
+                    width
+                ]
+            );
+
         return {
 
-            data: tensor,
+            tensor,
 
             width,
 
@@ -268,7 +279,7 @@
 
             channels: 3,
 
-            layout: "HWC",
+            layout: "NCHW",
 
             normalized: true
         };
@@ -282,33 +293,58 @@
 
     function tensorToImage(
         tensor,
-        width,
-        height
+        options = {}
     ) {
 
-        if (
-            !tensor ||
-            !width ||
-            !height
-        ) {
+        if (!tensor) {
 
             throw new Error(
-                "Tensor output tidak valid."
+                "Output tensor tidak ditemukan."
             );
         }
 
-        const expected =
-            width *
-            height *
-            3;
+        const data =
+            tensor.data;
+
+        const dims =
+            tensor.dims;
 
         if (
-            tensor.length <
-            expected
+            !data ||
+            !dims ||
+            dims.length !== 4
         ) {
 
             throw new Error(
-                "Ukuran tensor tidak sesuai."
+                "Format output tensor tidak valid."
+            );
+        }
+
+        /*
+         * Expected:
+         *
+         * [1, 3, H, W]
+         */
+
+        const batch =
+            dims[0];
+
+        const channels =
+            dims[1];
+
+        const height =
+            dims[2];
+
+        const width =
+            dims[3];
+
+        if (
+            batch !== 1 ||
+            channels < 3
+        ) {
+
+            throw new Error(
+                "Output model harus memiliki format [1,3,H,W]."
             );
         }
 
@@ -317,8 +353,11 @@
                 "canvas"
             );
 
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width =
+            width;
+
+        canvas.height =
+            height;
 
         const context =
             canvas.getContext(
@@ -331,32 +370,50 @@
                 height
             );
 
+        const pixelCount =
+            width * height;
+
+        const redOffset =
+            0;
+
+        const greenOffset =
+            pixelCount;
+
+        const blueOffset =
+            pixelCount * 2;
+
         for (
             let i = 0;
-            i < width * height;
+            i < pixelCount;
             i++
         ) {
-
-            const src =
-                i * 3;
 
             const dst =
                 i * 4;
 
+            const r =
+                data[
+                    redOffset + i
+                ];
+
+            const g =
+                data[
+                    greenOffset + i
+                ];
+
+            const b =
+                data[
+                    blueOffset + i
+                ];
+
             imageData.data[dst] =
-                clamp(
-                    tensor[src] * 255
-                );
+                normalizePixel(r);
 
             imageData.data[dst + 1] =
-                clamp(
-                    tensor[src + 1] * 255
-                );
+                normalizePixel(g);
 
             imageData.data[dst + 2] =
-                clamp(
-                    tensor[src + 2] * 255
-                );
+                normalizePixel(b);
 
             imageData.data[dst + 3] =
                 255;
@@ -368,7 +425,16 @@
             0
         );
 
-        return canvas;
+        return {
+
+            canvas,
+
+            width,
+
+            height,
+
+            channels
+        };
     }
 
     /*
@@ -386,47 +452,68 @@
         if (!model) {
 
             throw new Error(
-                "Model AI belum dimuat."
-            );
-        }
-
-        if (!model.ready) {
-
-            throw new Error(
-                "Model AI belum tersedia."
-            );
-        }
-
-        if (!runtime) {
-
-            throw new Error(
-                "AI runtime belum terhubung."
+                "Model AI tidak ditemukan."
             );
         }
 
         if (!input) {
 
             throw new Error(
-                "Input AI tidak ditemukan."
+                "Input tensor tidak ditemukan."
+            );
+        }
+
+        const session =
+            await loadModel(
+                model,
+                options
+            );
+
+        if (!session) {
+
+            throw new Error(
+                "Inference session gagal dibuat."
             );
         }
 
         /*
-         * Runtime-specific inference
-         *
-         * This intentionally refuses to
-         * produce a fake AI result.
+         * Get model input/output names.
          */
 
-        if (
-            typeof runtime.run !==
-            "function"
-        ) {
+        const inputNames =
+            session.inputNames || [];
+
+        const outputNames =
+            session.outputNames || [];
+
+        if (!inputNames.length) {
 
             throw new Error(
-                "AI runtime tidak memiliki fungsi inference."
+                "Model tidak memiliki input."
             );
         }
+
+        if (!outputNames.length) {
+
+            throw new Error(
+                "Model tidak memiliki output."
+            );
+        }
+
+        /*
+         * Use first input/output.
+         *
+         * Most single-image restoration
+         * models follow this structure.
+         */
+
+        const inputName =
+            options.inputName ||
+            inputNames[0];
+
+        const outputName =
+            options.outputName ||
+            outputNames[0];
 
         if (
             typeof options.onProgress ===
@@ -436,12 +523,63 @@
             options.onProgress(10);
         }
 
-        const result =
-            await runtime.run(
-                model,
-                input,
-                options
+        /*
+         * Run real ONNX inference.
+         */
+
+        const feeds = {};
+
+        feeds[inputName] =
+            input.tensor ||
+            input;
+
+        const results =
+            await session.run(
+                feeds
             );
+
+        if (
+            typeof options.onProgress ===
+            "function"
+        ) {
+
+            options.onProgress(85);
+        }
+
+        const output =
+            results[outputName];
+
+        if (!output) {
+
+            /*
+             * Some models can expose
+             * a different output key.
+             */
+
+            const firstOutput =
+                Object.values(
+                    results
+                )[0];
+
+            if (!firstOutput) {
+
+                throw new Error(
+                    "Model tidak menghasilkan output."
+                );
+            }
+
+            return {
+
+                data:
+                    firstOutput.data,
+
+                dims:
+                    firstOutput.dims,
+
+                tensor:
+                    firstOutput
+            };
+        }
 
         if (
             typeof options.onProgress ===
@@ -451,12 +589,22 @@
             options.onProgress(100);
         }
 
-        return result;
+        return {
+
+            data:
+                output.data,
+
+            dims:
+                output.dims,
+
+            tensor:
+                output
+        };
     }
 
     /*
      * =========================
-     * VALIDATION
+     * VALIDATE
      * =========================
      */
 
@@ -468,7 +616,9 @@
         if (!image) {
 
             return {
+
                 valid: false,
+
                 reason:
                     "Image tidak ditemukan."
             };
@@ -477,7 +627,9 @@
         if (!modelConfig) {
 
             return {
+
                 valid: false,
+
                 reason:
                     "Konfigurasi model tidak ditemukan."
             };
@@ -492,6 +644,7 @@
             image.height;
 
         const max =
+            modelConfig.maxInput ||
             modelConfig.maxInputResolution ||
             4096;
 
@@ -501,7 +654,9 @@
         ) {
 
             return {
+
                 valid: false,
+
                 reason:
                     "Resolusi input melebihi batas model."
             };
@@ -514,17 +669,138 @@
 
     /*
      * =========================
+     * OUTPUT -> IMAGE
+     * =========================
+     */
+
+    function outputToImage(
+        output
+    ) {
+
+        if (
+            !output ||
+            !output.tensor
+        ) {
+
+            throw new Error(
+                "Output tensor tidak tersedia."
+            );
+        }
+
+        return tensorToImage(
+            output.tensor
+        );
+    }
+
+    /*
+     * =========================
+     * DISPOSE
+     * =========================
+     */
+
+    async function disposeSession() {
+
+        if (
+            activeSession &&
+            typeof activeSession
+                .release === "function"
+        ) {
+
+            try {
+
+                await activeSession.release();
+
+            } catch (error) {
+
+                console.warn(
+                    "Failed to release ONNX session:",
+                    error
+                );
+            }
+        }
+
+        activeSession = null;
+
+        activeModelId = null;
+    }
+
+    /*
+     * =========================
+     * STATUS
+     * =========================
+     */
+
+    function getStatus() {
+
+        const runtime =
+            window.FidelisRuntime
+                ? FidelisRuntime.getStatus()
+                : null;
+
+        return {
+
+            initialized,
+
+            session:
+                activeSession !== null,
+
+            activeModel:
+                activeModelId,
+
+            runtime
+        };
+    }
+
+    /*
+     * =========================
      * UTILITY
      * =========================
      */
 
-    function clamp(value) {
+    function normalizePixel(
+        value
+    ) {
+
+        /*
+         * Some models return:
+         *
+         * 0..1
+         *
+         * while others may return:
+         *
+         * -1..1
+         */
+
+        let v =
+            Number(value);
+
+        if (!Number.isFinite(v)) {
+            v = 0;
+        }
+
+        if (
+            v >= -1 &&
+            v <= 1
+        ) {
+
+            /*
+             * If negative values exist,
+             * assume [-1,1].
+             */
+
+            if (v < 0) {
+                v =
+                    (v + 1) / 2;
+            }
+        }
 
         return Math.max(
             0,
             Math.min(
                 255,
-                Math.round(value)
+                Math.round(
+                    v * 255
+                )
             )
         );
     }
@@ -539,21 +815,21 @@
 
         init,
 
-        getStatus,
-
-        detectBackend,
-
-        setRuntime,
-
-        hasRuntime,
+        loadModel,
 
         imageToTensor,
 
         tensorToImage,
 
+        outputToImage,
+
         run,
 
-        validateInput
+        validateInput,
+
+        disposeSession,
+
+        getStatus
     };
 
 })();
