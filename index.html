@@ -2,55 +2,410 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <meta
-    name="theme-color"
-    content="#08080d"
-  >
-
-  <meta
-    name="description"
-    content="FIDELIS — AI photo and video enhancement. Enhance. Don't Change."
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#09090f">
+  <meta name="description" content="FIDELIS — Enhance. Don't Change. AI photo and video enhancement.">
 
   <title>FIDELIS — Enhance. Don't Change.</title>
 
-  <link
-    rel="stylesheet"
-    href="css/style.css"
-  >
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
 
-  <!-- ================================================= -->
-  <!-- HEADER                                            -->
-  <!-- ================================================= -->
-
+  <!-- ================= HEADER ================= -->
   <header class="header">
+    <div class="header-inner">
 
-    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-mark">F</div>
 
-      <div class="logo">
+        <div>
+          <h1>FIDELIS</h1>
+          <span>Enhance. Don't Change.</span>
+        </div>
+      </div>
 
-        <span class="logo-mark">
-          F
-        </span>
+      <button id="vipButton" class="vip-button">
+        <span>✦</span>
+        VVIP
+      </button>
 
-        <div class="logo-text">
+    </div>
+  </header>
+
+
+  <!-- ================= MAIN ================= -->
+  <main class="main-container">
+
+    <!-- HERO -->
+    <section class="hero-section">
+
+      <div class="hero-badge">
+        AI ENHANCEMENT ENGINE
+      </div>
+
+      <h2>
+        Make it clearer.<br>
+        <span>Keep it you.</span>
+      </h2>
+
+      <p>
+        FIDELIS enhances resolution, sharpness and detail
+        while protecting the original identity of the subject.
+      </p>
+
+    </section>
+
+
+    <!-- ================= MODE ================= -->
+    <section class="mode-section">
+
+      <div class="mode-selector">
+
+        <button
+          id="photoMode"
+          class="mode-button active"
+          type="button"
+        >
+          <span>◉</span>
+          Photo
+        </button>
+
+        <button
+          id="videoMode"
+          class="mode-button"
+          type="button"
+        >
+          <span>▶</span>
+          Video
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= UPLOAD ================= -->
+    <section class="upload-section">
+
+      <div
+        id="uploadBox"
+        class="upload-box"
+      >
+
+        <input
+          id="fileInput"
+          type="file"
+          accept="image/*"
+          hidden
+        >
+
+        <div class="upload-icon">
+          ↑
+        </div>
+
+        <h3 id="uploadTitle">
+          Drop your photo here
+        </h3>
+
+        <p id="uploadDescription">
+          or choose a file from your device
+        </p>
+
+        <button
+          id="uploadButton"
+          class="primary-button"
+          type="button"
+        >
+          Choose File
+        </button>
+
+        <small id="uploadLimit">
+          JPG, PNG, WEBP • Max 20MB
+        </small>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= PREVIEW ================= -->
+    <section
+      id="previewSection"
+      class="preview-section hidden"
+    >
+
+      <div class="section-header">
+
+        <div>
+          <span class="section-label">
+            SELECTED MEDIA
+          </span>
+
+          <h3 id="fileName">
+            image.jpg
+          </h3>
+        </div>
+
+        <button
+          id="removeButton"
+          class="icon-button"
+          type="button"
+          aria-label="Remove file"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="media-preview-container">
+
+        <img
+          id="mediaPreview"
+          class="media-preview"
+          alt="Selected media preview"
+        >
+
+      </div>
+
+
+      <!-- QUALITY -->
+      <div class="quality-section">
+
+        <div class="section-header compact">
+
+          <div>
+            <span class="section-label">
+              ENHANCEMENT
+            </span>
+
+            <h3>Choose quality</h3>
+          </div>
+
+        </div>
+
+
+        <div class="quality-options">
+
+          <button
+            class="quality-option active"
+            data-quality="standard"
+            type="button"
+          >
+
+            <div class="quality-icon">
+              2×
+            </div>
+
+            <div class="quality-info">
+              <strong>Standard</strong>
+              <span>Fast AI enhancement</span>
+            </div>
+
+            <div class="quality-check">
+              ✓
+            </div>
+
+          </button>
+
+
+          <button
+            class="quality-option"
+            data-quality="high"
+            type="button"
+          >
+
+            <div class="quality-icon">
+              2×
+            </div>
+
+            <div class="quality-info">
+              <strong>High</strong>
+              <span>More detail & sharpness</span>
+            </div>
+
+            <div class="quality-check">
+              ✓
+            </div>
+
+          </button>
+
+
+          <button
+            class="quality-option vvip-option"
+            data-quality="ultra"
+            type="button"
+          >
+
+            <div class="quality-icon">
+              4×
+            </div>
+
+            <div class="quality-info">
+              <strong>Ultra</strong>
+              <span>Maximum AI enhancement</span>
+            </div>
+
+            <div class="quality-badge">
+              VVIP
+            </div>
+
+            <div class="quality-check">
+              ✓
+            </div>
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- FACE PRESERVATION -->
+      <div class="face-preservation">
+
+        <div class="face-icon">
+          ◉
+        </div>
+
+        <div class="face-content">
 
           <strong>
-            FIDELIS
+            Identity Protection
           </strong>
 
-          <small>
-            Enhance. Don't Change.
-          </small>
+          <span>
+            Enhance details without changing facial identity.
+          </span>
+
+        </div>
+
+        <div class="face-status">
+          ON
+        </div>
+
+      </div>
+
+
+      <button
+        id="enhanceButton"
+        class="enhance-button"
+        type="button"
+      >
+
+        <span class="enhance-icon">
+          ✦
+        </span>
+
+        <span>
+          Enhance with AI
+        </span>
+
+      </button>
+
+    </section>
+
+
+    <!-- ================= PROCESSING ================= -->
+    <section
+      id="processingSection"
+      class="processing-section hidden"
+    >
+
+      <div class="processing-orb">
+        <div class="spinner"></div>
+      </div>
+
+      <span class="section-label">
+        FIDELIS AI ENGINE
+      </span>
+
+      <h3 id="processingText">
+        Preparing AI engine...
+      </h3>
+
+      <div class="progress-container">
+
+        <div class="progress-track">
+
+          <div
+            id="progressBar"
+            class="progress-bar"
+            style="width: 0%"
+          ></div>
+
+        </div>
+
+        <span id="progressPercent">
+          0%
+        </span>
+
+      </div>
+
+      <p>
+        Your original media remains unchanged.
+      </p>
+
+    </section>
+
+
+    <!-- ================= RESULT ================= -->
+    <section
+      id="resultSection"
+      class="result-section hidden"
+    >
+
+      <div class="result-header">
+
+        <div>
+          <span class="section-label">
+            COMPLETE
+          </span>
+
+          <h3>
+            Enhancement finished
+          </h3>
+        </div>
+
+        <div class="result-quality">
+          AI
+        </div>
+
+      </div>
+
+
+      <div class="result-preview-container">
+
+        <img
+          id="resultPreview"
+          class="result-preview"
+          alt="Enhanced result"
+        >
+
+      </div>
+
+
+      <div class="result-info">
+
+        <div class="result-stat">
+
+          <span>QUALITY</span>
+
+          <strong id="resultQuality">
+            AI Enhanced
+          </strong>
+
+        </div>
+
+        <div class="result-stat">
+
+          <span>IDENTITY</span>
+
+          <strong>
+            Protected
+          </strong>
 
         </div>
 
@@ -58,738 +413,52 @@
 
 
       <button
-        id="vipButton"
-        class="vip-button"
+        id="downloadButton"
+        class="primary-button download-button"
         type="button"
       >
-
-        <span>
-          ✦
-        </span>
-
-        VVIP
-
+        ↓ Download Result
       </button>
 
-    </div>
 
-  </header>
-
-
-  <!-- ================================================= -->
-  <!-- MAIN                                              -->
-  <!-- ================================================= -->
-
-  <main>
-
-    <!-- ================================================= -->
-    <!-- HERO                                              -->
-    <!-- ================================================= -->
-
-    <section class="hero">
-
-      <div class="container">
-
-        <div class="hero-content">
-
-          <div class="hero-badge">
-
-            <span>
-              ✦
-            </span>
-
-            AI-POWERED ENHANCEMENT
-
-          </div>
-
-
-          <h1>
-
-            Make it sharper.
-
-            <span>
-              Keep it you.
-            </span>
-
-          </h1>
-
-
-          <p>
-            Enhance your photos and videos with AI
-            while preserving the original face,
-            identity, and natural details.
-          </p>
-
-        </div>
-
-
-        <!-- ================================================= -->
-        <!-- MODE SELECTOR                                     -->
-        <!-- ================================================= -->
-
-        <div class="mode-selector">
-
-          <button
-            id="photoMode"
-            class="mode-button active"
-            type="button"
-          >
-
-            <span>
-              ▣
-            </span>
-
-            Photo
-
-          </button>
-
-
-          <button
-            id="videoMode"
-            class="mode-button"
-            type="button"
-          >
-
-            <span>
-              ▶
-            </span>
-
-            Video
-
-          </button>
-
-        </div>
-
-
-        <!-- ================================================= -->
-        <!-- UPLOAD                                            -->
-        <!-- ================================================= -->
-
-        <section
-          id="uploadBox"
-          class="upload-box"
-        >
-
-          <input
-            id="fileInput"
-            type="file"
-            accept="image/*"
-            hidden
-          >
-
-
-          <div class="upload-icon">
-            ↑
-          </div>
-
-
-          <h2 id="uploadTitle">
-            Drop your photo here
-          </h2>
-
-
-          <p id="uploadDescription">
-            or click to browse from your device
-          </p>
-
-
-          <button
-            id="uploadButton"
-            class="primary-button"
-            type="button"
-          >
-            Choose File
-          </button>
-
-
-          <div
-            id="uploadLimit"
-            class="upload-limit"
-          >
-            JPG, PNG, WEBP • Max 20 MB
-          </div>
-
-        </section>
-
-
-        <!-- ================================================= -->
-        <!-- PREVIEW                                           -->
-        <!-- ================================================= -->
-
-        <section
-          id="previewSection"
-          class="preview-section hidden"
-        >
-
-          <div class="section-header">
-
-            <div>
-
-              <span class="section-label">
-                SELECTED MEDIA
-              </span>
-
-
-              <h2 id="fileName">
-                Your file
-              </h2>
-
-            </div>
-
-
-            <button
-              id="removeButton"
-              class="icon-button"
-              type="button"
-              aria-label="Remove file"
-            >
-              ×
-            </button>
-
-          </div>
-
-
-          <div class="media-preview-wrapper">
-
-            <canvas
-              id="mediaPreview"
-              class="media-preview"
-            ></canvas>
-
-          </div>
-
-
-          <!-- ================================================= -->
-          <!-- ENHANCEMENT                                       -->
-          <!-- ================================================= -->
-
-          <div class="enhancement-panel">
-
-            <div class="section-header compact">
-
-              <div>
-
-                <span class="section-label">
-                  ENHANCEMENT
-                </span>
-
-
-                <h2>
-                  Choose quality
-                </h2>
-
-              </div>
-
-            </div>
-
-
-            <div class="quality-options">
-
-              <!-- STANDARD -->
-
-              <button
-                class="quality-option active"
-                data-quality="standard"
-                type="button"
-              >
-
-                <div class="quality-icon">
-                  HD
-                </div>
-
-
-                <div class="quality-info">
-
-                  <strong>
-                    Standard
-                  </strong>
-
-
-                  <span>
-                    Fast AI enhancement
-                  </span>
-
-                </div>
-
-
-                <span class="quality-check">
-                  ✓
-                </span>
-
-              </button>
-
-
-              <!-- HIGH -->
-
-              <button
-                class="quality-option"
-                data-quality="high"
-                type="button"
-              >
-
-                <div class="quality-icon">
-                  HD+
-                </div>
-
-
-                <div class="quality-info">
-
-                  <strong>
-                    High
-                  </strong>
-
-
-                  <span>
-                    Better detail & sharpness
-                  </span>
-
-                </div>
-
-
-                <span class="quality-check">
-                  ✓
-                </span>
-
-              </button>
-
-
-              <!-- ULTRA -->
-
-              <button
-                class="quality-option vvip-option"
-                data-quality="ultra"
-                type="button"
-              >
-
-                <div class="quality-icon">
-                  4K
-                </div>
-
-
-                <div class="quality-info">
-
-                  <strong>
-
-                    Ultra
-
-                    <span class="mini-vvip">
-                      VVIP
-                    </span>
-
-                  </strong>
-
-
-                  <span>
-                    Maximum AI enhancement
-                  </span>
-
-                </div>
-
-
-                <span class="quality-check">
-                  ✓
-                </span>
-
-              </button>
-
-            </div>
-
-
-            <!-- ================================================= -->
-            <!-- FACE PRESERVATION                                -->
-            <!-- ================================================= -->
-
-            <div class="face-preservation">
-
-              <div class="face-icon">
-                ◉
-              </div>
-
-
-              <div class="face-content">
-
-                <strong>
-                  Face Preservation
-                </strong>
-
-
-                <span>
-                  Enhance, don't recreate.
-                  Original identity stays the priority.
-                </span>
-
-              </div>
-
-
-              <div class="face-status">
-
-                <span></span>
-
-                ON
-
-              </div>
-
-            </div>
-
-
-            <!-- ================================================= -->
-            <!-- ENHANCE BUTTON                                   -->
-            <!-- ================================================= -->
-
-            <button
-              id="enhanceButton"
-              class="enhance-button"
-              type="button"
-            >
-
-              <span>
-                ✦
-              </span>
-
-              Enhance with AI
-
-            </button>
-
-          </div>
-
-        </section>
-
-
-        <!-- ================================================= -->
-        <!-- PROCESSING                                        -->
-        <!-- ================================================= -->
-
-        <section
-          id="processingSection"
-          class="processing-section hidden"
-        >
-
-          <div class="processing-card">
-
-            <div class="processing-orb">
-
-              <div class="processing-spinner"></div>
-
-            </div>
-
-
-            <span class="section-label">
-              FIDELIS AI
-            </span>
-
-
-            <h2>
-              Enhancing your media
-            </h2>
-
-
-            <p id="processingText">
-              Preparing AI engine...
-            </p>
-
-
-            <div class="progress-wrapper">
-
-              <div class="progress-track">
-
-                <div
-                  id="progressBar"
-                  class="progress-bar"
-                  style="width:0%"
-                ></div>
-
-              </div>
-
-
-              <span id="progressPercent">
-                0%
-              </span>
-
-            </div>
-
-
-            <div class="processing-note">
-
-              <span>
-                ◉
-              </span>
-
-              Preserving original identity
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <!-- ================================================= -->
-        <!-- RESULT                                            -->
-        <!-- ================================================= -->
-
-        <section
-          id="resultSection"
-          class="result-section hidden"
-        >
-
-          <div class="section-header">
-
-            <div>
-
-              <span class="section-label">
-                COMPLETE
-              </span>
-
-
-              <h2>
-                Your enhanced media
-              </h2>
-
-            </div>
-
-          </div>
-
-
-          <div class="result-preview-wrapper">
-
-            <canvas
-              id="resultPreview"
-              class="result-preview"
-            ></canvas>
-
-          </div>
-
-
-          <div class="result-info">
-
-            <div class="result-stat">
-
-              <span>
-                QUALITY
-              </span>
-
-
-              <strong id="resultQuality">
-                HD
-              </strong>
-
-            </div>
-
-
-            <div class="result-stat">
-
-              <span>
-                ENGINE
-              </span>
-
-
-              <strong>
-                FIDELIS AI
-              </strong>
-
-            </div>
-
-
-            <div class="result-stat">
-
-              <span>
-                IDENTITY
-              </span>
-
-
-              <strong>
-                PRESERVED
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <div class="result-actions">
-
-            <button
-              id="downloadButton"
-              class="primary-button"
-              type="button"
-            >
-              ↓ Download
-            </button>
-
-
-            <button
-              id="newFileButton"
-              class="secondary-button"
-              type="button"
-            >
-              Enhance Another
-            </button>
-
-          </div>
-
-        </section>
-
-      </div>
+      <button
+        id="newFileButton"
+        class="secondary-button"
+        type="button"
+      >
+        Enhance Another
+      </button>
 
     </section>
 
 
-    <!-- ================================================= -->
-    <!-- FEATURES                                          -->
-    <!-- ================================================= -->
-
-    <section class="features-section">
-
-      <div class="container">
-
-        <div class="features-grid">
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              ✦
-            </div>
-
-
-            <h3>
-              Real AI Enhancement
-            </h3>
-
-
-            <p>
-              AI-powered enhancement designed
-              to recover detail and improve clarity.
-            </p>
-
-          </div>
-
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              ◉
-            </div>
-
-
-            <h3>
-              Identity First
-            </h3>
-
-
-            <p>
-              FIDELIS enhances the original person
-              instead of intentionally recreating them.
-            </p>
-
-          </div>
-
-
-          <div class="feature-card">
-
-            <div class="feature-icon">
-              ⚡
-            </div>
-
-
-            <h3>
-              Device Processing
-            </h3>
-
-
-            <p>
-              Browser-side processing is designed
-              to reduce unnecessary media uploads.
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- ================================================= -->
-    <!-- VVIP                                              -->
-    <!-- ================================================= -->
-
+    <!-- ================= VVIP ================= -->
     <section class="vvip-section">
 
-      <div class="container">
+      <div class="vvip-card">
 
-        <div class="vvip-card">
+        <div class="vvip-glow"></div>
 
-          <div class="vvip-content">
+        <span class="section-label">
+          FIDELIS VVIP
+        </span>
 
-            <div class="hero-badge">
+        <h3>
+          Push your media further.
+        </h3>
 
-              <span>
-                ✦
-              </span>
+        <p>
+          Unlock Ultra AI enhancement, larger resolutions,
+          advanced processing and priority features.
+        </p>
 
-              FIDELIS VVIP
-
-            </div>
-
-
-            <h2>
-
-              Take enhancement
-
-              <span>
-                to another level.
-              </span>
-
-            </h2>
-
-
-            <p>
-              Unlock higher resolution,
-              advanced AI models, and
-              premium enhancement features.
-            </p>
-
-
-            <button
-              id="upgradeButton"
-              class="primary-button"
-              type="button"
-            >
-              Upgrade to VVIP
-            </button>
-
-          </div>
-
-
-          <div class="vvip-features">
-
-            <div>
-              <span>✓</span>
-              Ultra AI enhancement
-            </div>
-
-
-            <div>
-              <span>✓</span>
-              Higher resolution output
-            </div>
-
-
-            <div>
-              <span>✓</span>
-              Advanced detail recovery
-            </div>
-
-
-            <div>
-              <span>✓</span>
-              Priority processing
-            </div>
-
-          </div>
-
-        </div>
+        <button
+          id="upgradeButton"
+          class="vip-button large"
+          type="button"
+        >
+          Upgrade to VVIP
+        </button>
 
       </div>
 
@@ -798,196 +467,147 @@
   </main>
 
 
-  <!-- ================================================= -->
-  <!-- FOOTER                                            -->
-  <!-- ================================================= -->
-
+  <!-- ================= FOOTER ================= -->
   <footer class="footer">
 
-    <div class="container footer-inner">
-
-      <div class="footer-brand">
-
-        <strong>
-          FIDELIS
-        </strong>
-
-
-        <span>
-          Enhance. Don't Change.
-        </span>
-
-      </div>
-
-
-      <div class="footer-copy">
-        © 2026 FIDELIS. Built for better memories.
-      </div>
-
+    <div class="footer-brand">
+      FIDELIS
     </div>
+
+    <p>
+      Enhance. Don't Change.
+    </p>
+
+    <span>
+      © 2026 FIDELIS AI
+    </span>
 
   </footer>
 
 
-  <!-- ================================================= -->
-  <!-- VVIP MODAL                                        -->
-  <!-- ================================================= -->
-
+  <!-- ================= MODAL OVERLAY ================= -->
   <div
     id="modalOverlay"
     class="modal-overlay hidden"
   ></div>
 
 
+  <!-- ================= VVIP MODAL ================= -->
   <div
     id="vipModal"
-    class="vip-modal hidden"
+    class="modal hidden"
     role="dialog"
     aria-modal="true"
-    aria-labelledby="vipModalTitle"
   >
 
     <button
       id="modalClose"
       class="modal-close"
       type="button"
-      aria-label="Close"
     >
       ×
     </button>
-
-
-    <div class="modal-icon">
-      ✦
-    </div>
-
 
     <span class="section-label">
       FIDELIS VVIP
     </span>
 
-
-    <h2 id="vipModalTitle">
-      Unlock the full power of FIDELIS
+    <h2>
+      Unlock Ultra.
     </h2>
 
-
     <p>
-      VVIP will unlock advanced AI models,
-      higher resolution, and premium
-      enhancement capabilities.
+      Get access to maximum AI enhancement,
+      higher resolution output and future advanced AI tools.
     </p>
 
-
-    <div class="modal-features">
+    <div class="vip-features">
 
       <div>
         <span>✓</span>
-        Ultra AI enhancement
+        Ultra 4× AI enhancement
       </div>
 
-
       <div>
         <span>✓</span>
-        Higher resolution
+        Higher output resolution
       </div>
 
-
       <div>
         <span>✓</span>
-        Advanced detail recovery
+        Advanced enhancement engine
       </div>
 
-
       <div>
         <span>✓</span>
-        Premium processing
+        Future premium features
       </div>
 
     </div>
 
-
     <button
       id="upgradeModalButton"
-      class="primary-button"
+      class="enhance-button"
       type="button"
     >
-      VVIP Coming Soon
+      Upgrade to VVIP
     </button>
 
   </div>
 
 
-  <!-- ================================================= -->
-  <!-- FIDELIS SCRIPT SYSTEM                             -->
-  <!-- ================================================= -->
-
-  <!-- CORE -->
+  <!-- ================= JAVASCRIPT ================= -->
 
   <script src="js/ai-engine.js"></script>
+
   <script src="js/model-manager.js"></script>
-
-
-  <!-- MODEL REGISTRY -->
 
   <script src="js/ai-model-config.js"></script>
   <script src="js/ai-models.js"></script>
+
   <script src="js/ai-model-loader.js"></script>
+
+  <!-- NEW V2 MODEL SYSTEM -->
+  <script src="js/ai-model-registry.js"></script>
+  <script src="js/ai-model-loader-v2.js"></script>
+
   <script src="js/ai-model-adapter.js"></script>
-
-
-  <!-- MODEL SYNCHRONIZATION -->
-
   <script src="js/ai-model-sync.js"></script>
   <script src="js/ai-model-bootstrap.js"></script>
   <script src="js/ai-model-url.js"></script>
   <script src="js/ai-model-health.js"></script>
   <script src="js/ai-model-installer.js"></script>
 
-
-  <!-- RUNTIME -->
-
+  <!-- AI RUNTIME -->
   <script src="js/ai-runtime.js"></script>
   <script src="js/ai-inference.js"></script>
+
+  <!-- AI BRIDGE -->
   <script src="js/ai-model-bridge.js"></script>
 
-
   <!-- IMAGE PIPELINE -->
-
   <script src="js/ai-tile-engine.js"></script>
   <script src="js/ai-image-pipeline.js"></script>
   <script src="js/ai-pipeline-router.js"></script>
   <script src="js/ai-pipeline-test.js"></script>
 
-
   <!-- DIAGNOSTICS -->
-
   <script src="js/ai-diagnostics.js"></script>
 
-
   <!-- FACE PROTECTION -->
-
   <script src="js/face-guard.js"></script>
   <script src="js/face-preservation.js"></script>
 
-
   <!-- MEDIA -->
-
   <script src="js/image-ai.js"></script>
   <script src="js/image.js"></script>
   <script src="js/video.js"></script>
 
-
-  <!-- STORAGE / UI -->
-
+  <!-- APP -->
   <script src="js/storage.js"></script>
   <script src="js/notifications.js"></script>
   <script src="js/tier-manager.js"></script>
   <script src="js/processing-engine.js"></script>
-
-
-  <!-- MAIN APP -->
-
   <script src="js/app.js"></script>
 
 </body>
