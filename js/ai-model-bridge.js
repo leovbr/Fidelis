@@ -1,15 +1,6 @@
 /* =========================================================
    FIDELIS AI MODEL BRIDGE
-   Connects:
-   Model Registry
-        ↓
-   Model Loader V2
-        ↓
-   ONNX Runtime
-        ↓
-   Model Adapter
-        ↓
-   Image Pipeline
+   Real-ESRGAN ONNX Bridge
    ========================================================= */
 
 (function () {
@@ -25,7 +16,7 @@
 
 
     /* =====================================================
-       NORMALIZE QUALITY
+       QUALITY
        ===================================================== */
 
     normalizeQuality(quality) {
@@ -34,134 +25,204 @@
         quality === "ultra" ||
         quality === "vvip"
       ) {
+
         return "ultra";
+
       }
+
 
       if (
         quality === "high" ||
         quality === "hq"
       ) {
+
         return "high";
+
       }
 
+
       return "standard";
+
     },
 
 
     /* =====================================================
-       GET MODEL
+       MODEL
        ===================================================== */
 
     getModel(quality) {
 
-      const q = this.normalizeQuality(quality);
+      const q =
+        this.normalizeQuality(quality);
+
+
+      if (
+        window.FidelisRealESRGAN &&
+        typeof window.FidelisRealESRGAN.get ===
+        "function"
+      ) {
+
+        const model =
+          window.FidelisRealESRGAN.get(q);
+
+        if (model) {
+          return model;
+        }
+
+      }
+
 
       if (
         window.FidelisModelRegistry &&
-        typeof window.FidelisModelRegistry.get === "function"
+        typeof window.FidelisModelRegistry.get ===
+        "function"
       ) {
-        return window.FidelisModelRegistry.get(q);
+
+        const model =
+          window.FidelisModelRegistry.get(q);
+
+        if (model) {
+          return model;
+        }
+
       }
 
 
       if (
         window.FidelisAIModelConfig &&
-        typeof window.FidelisAIModelConfig.get === "function"
+        typeof window.FidelisAIModelConfig.get ===
+        "function"
       ) {
+
         return window.FidelisAIModelConfig.get(q);
+
       }
 
 
       return null;
-    },
-
-
-    /* =====================================================
-       CHECK VVIP
-       ===================================================== */
-
-    checkTier(model) {
-
-      if (!model) {
-        throw new Error("FIDELIS: Model not found.");
-      }
-
-
-      const tier =
-        String(model.tier || "free").toLowerCase();
-
-
-      if (
-        tier === "vvip" ||
-        tier === "premium"
-      ) {
-
-        if (
-          window.FidelisTier &&
-          typeof window.FidelisTier.isVVIP === "function"
-        ) {
-
-          if (!window.FidelisTier.isVVIP()) {
-
-            throw new Error(
-              "This AI model requires FIDELIS VVIP."
-            );
-
-          }
-
-        }
-
-      }
 
     },
 
 
     /* =====================================================
-       GET MODEL URL
+       MODEL URL
        ===================================================== */
 
     getModelURL(quality) {
 
-      const q = this.normalizeQuality(quality);
+      const q =
+        this.normalizeQuality(quality);
+
+
+      /*
+       Real-ESRGAN config gets first priority.
+       */
+
+      if (
+        window.FidelisRealESRGAN &&
+        typeof window.FidelisRealESRGAN.getURL ===
+        "function"
+      ) {
+
+        const url =
+          window.FidelisRealESRGAN.getURL(q);
+
+        if (url) {
+          return url;
+        }
+
+      }
 
 
       if (
         window.FidelisModelRegistry &&
-        typeof window.FidelisModelRegistry.getURL === "function"
+        typeof window.FidelisModelRegistry.getURL ===
+        "function"
       ) {
 
         const url =
           window.FidelisModelRegistry.getURL(q);
 
-        if (url) return url;
+        if (url) {
+          return url;
+        }
 
       }
 
 
       if (
         window.FidelisModelURL &&
-        typeof window.FidelisModelURL.get === "function"
+        typeof window.FidelisModelURL.get ===
+        "function"
       ) {
 
         const url =
           window.FidelisModelURL.get(q);
 
-        if (url) return url;
-
-      }
-
-
-      if (
-        window.FidelisAIModelConfig &&
-        typeof window.FidelisAIModelConfig.getURL === "function"
-      ) {
-
-        return window.FidelisAIModelConfig.getURL(q);
+        if (url) {
+          return url;
+        }
 
       }
 
 
       return null;
+
+    },
+
+
+    /* =====================================================
+       TIER
+       ===================================================== */
+
+    checkTier(model) {
+
+      if (!model) {
+
+        throw new Error(
+          "FIDELIS: AI model not found."
+        );
+
+      }
+
+
+      const tier =
+        String(
+          model.tier || "free"
+        ).toLowerCase();
+
+
+      if (
+        tier !== "vvip" &&
+        tier !== "premium"
+      ) {
+
+        return true;
+
+      }
+
+
+      if (
+        window.FidelisTier &&
+        typeof window.FidelisTier.isVVIP ===
+        "function"
+      ) {
+
+        if (
+          !window.FidelisTier.isVVIP()
+        ) {
+
+          throw new Error(
+            "FIDELIS Ultra requires VVIP."
+          );
+
+        }
+
+      }
+
+
+      return true;
+
     },
 
 
@@ -172,17 +233,20 @@
     async initRuntime() {
 
       if (this.initialized) {
+
         return true;
+
       }
 
 
       if (
         !window.FidelisRuntime ||
-        typeof window.FidelisRuntime.init !== "function"
+        typeof window.FidelisRuntime.init !==
+        "function"
       ) {
 
         throw new Error(
-          "FIDELIS: ONNX Runtime is unavailable."
+          "FIDELIS: ONNX Runtime unavailable."
         );
 
       }
@@ -193,124 +257,127 @@
 
       this.initialized = true;
 
+
       return true;
+
     },
 
 
     /* =====================================================
-       LOAD MODEL BINARY
+       LOAD MODEL
        ===================================================== */
 
-    async loadModel(quality, options = {}) {
+    async loadModel(
+      quality,
+      options = {}
+    ) {
 
-      const q = this.normalizeQuality(quality);
-
-
-      let loader = null;
+      const q =
+        this.normalizeQuality(quality);
 
 
       /*
-       Prefer V2 loader.
-      */
+       V2 loader first.
+       */
 
       if (
         window.FidelisModelLoaderV2 &&
-        typeof window.FidelisModelLoaderV2.load === "function"
+        typeof window.FidelisModelLoaderV2.load ===
+        "function"
       ) {
 
-        loader = window.FidelisModelLoaderV2;
+        const result =
+          await window.FidelisModelLoaderV2.load(
+            q,
+            options
+          );
+
+
+        if (
+          result &&
+          result.buffer instanceof ArrayBuffer
+        ) {
+
+          return result.buffer;
+
+        }
+
+
+        if (
+          result instanceof ArrayBuffer
+        ) {
+
+          return result;
+
+        }
 
       }
 
 
       /*
-       Legacy loader fallback.
+       Legacy loader.
        */
 
-      else if (
+      if (
         window.FidelisModelLoader &&
-        typeof window.FidelisModelLoader.load === "function"
+        typeof window.FidelisModelLoader.load ===
+        "function"
       ) {
 
-        loader = window.FidelisModelLoader;
-
-      }
-
-
-      if (!loader) {
-
-        throw new Error(
-          "FIDELIS: Model loader unavailable."
-        );
-
-      }
+        const result =
+          await window.FidelisModelLoader.load(
+            q,
+            options
+          );
 
 
-      const result =
-        await loader.load(q, {
+        if (
+          result &&
+          result.buffer instanceof ArrayBuffer
+        ) {
 
-          ...options,
+          return result.buffer;
 
-          onProgress: options.onProgress || function () {}
-
-        });
-
-
-      /*
-       V2 loader may return an object.
-       */
-
-      if (
-        result &&
-        result.buffer instanceof ArrayBuffer
-      ) {
-
-        return result.buffer;
-
-      }
+        }
 
 
-      /*
-       Some loaders directly return ArrayBuffer.
-       */
+        if (
+          result instanceof ArrayBuffer
+        ) {
 
-      if (result instanceof ArrayBuffer) {
-        return result;
-      }
+          return result;
 
-
-      /*
-       Uint8Array support.
-       */
-
-      if (
-        result &&
-        result.buffer instanceof ArrayBuffer
-      ) {
-
-        return result.buffer;
+        }
 
       }
 
 
       throw new Error(
-        "FIDELIS: Model binary could not be loaded."
+        "FIDELIS: Unable to load ONNX model."
       );
 
     },
 
 
     /* =====================================================
-       CREATE SESSION
+       SESSION
        ===================================================== */
 
-    async createSession(quality, options = {}) {
+    async createSession(
+      quality,
+      options = {}
+    ) {
 
-      const q = this.normalizeQuality(quality);
+      const q =
+        this.normalizeQuality(quality);
 
 
-      if (this.sessions.has(q)) {
+      if (
+        this.sessions.has(q)
+      ) {
+
         return this.sessions.get(q);
+
       }
 
 
@@ -324,17 +391,41 @@
       this.checkTier(model);
 
 
+      const url =
+        this.getModelURL(q);
+
+
+      if (!url) {
+
+        throw new Error(
+          "FIDELIS: Real-ESRGAN model URL missing."
+        );
+
+      }
+
+
       const binary =
-        await this.loadModel(q, options);
+        await this.loadModel(
+          q,
+          {
+
+            ...options,
+
+            onProgress:
+              options.onProgress ||
+              function () {}
+
+          }
+        );
 
 
       if (
-        !window.FidelisRuntime ||
-        typeof window.FidelisRuntime.createSession !== "function"
+        !binary ||
+        !(binary instanceof ArrayBuffer)
       ) {
 
         throw new Error(
-          "FIDELIS: Runtime session creator unavailable."
+          "FIDELIS: Invalid ONNX model binary."
         );
 
       }
@@ -344,13 +435,18 @@
         await window.FidelisRuntime.createSession(
           binary,
           {
+
             executionProviders:
               options.executionProviders
+
           }
         );
 
 
-      this.sessions.set(q, session);
+      this.sessions.set(
+        q,
+        session
+      );
 
 
       return session;
@@ -359,10 +455,34 @@
 
 
     /* =====================================================
-       CREATE INPUT TENSOR
+       RUN
        ===================================================== */
 
-    createInputTensor(imageData, model) {
+    async run(
+      imageData,
+      quality = "standard",
+      options = {}
+    ) {
+
+      const q =
+        this.normalizeQuality(
+          quality
+        );
+
+
+      const model =
+        this.getModel(q);
+
+
+      this.checkTier(model);
+
+
+      const session =
+        await this.createSession(
+          q,
+          options
+        );
+
 
       if (
         !window.FidelisAIModelAdapter
@@ -375,149 +495,47 @@
       }
 
 
+      /*
+       Convert image to tensor.
+       */
+
+      let tensor;
+
+
       if (
         typeof window.FidelisAIModelAdapter.createInputTensor ===
         "function"
       ) {
 
-        return window.FidelisAIModelAdapter.createInputTensor(
-          imageData,
-          model
-        );
-
-      }
-
-
-      if (
-        typeof window.FidelisAIInference?.imageToTensor ===
-        "function"
-      ) {
-
-        return window.FidelisAIInference.imageToTensor(
-          imageData
-        );
-
-      }
-
-
-      throw new Error(
-        "FIDELIS: Input tensor converter unavailable."
-      );
-
-    },
-
-
-    /* =====================================================
-       RUN INFERENCE
-       ===================================================== */
-
-    async run(imageData, quality, options = {}) {
-
-      const q =
-        this.normalizeQuality(quality);
-
-
-      const model =
-        this.getModel(q);
-
-
-      if (!model) {
-
-        throw new Error(
-          "FIDELIS: AI model configuration missing."
-        );
-
-      }
-
-
-      this.checkTier(model);
-
-
-      /*
-       Get session.
-      */
-
-      const session =
-        await this.createSession(
-          q,
-          options
-        );
-
-
-      if (!session) {
-
-        throw new Error(
-          "FIDELIS: Could not create inference session."
-        );
-
-      }
-
-
-      /*
-       Create tensor.
-      */
-
-      const tensor =
-        this.createInputTensor(
-          imageData,
-          model
-        );
-
-
-      if (!tensor) {
-
-        throw new Error(
-          "FIDELIS: Input tensor creation failed."
-        );
-
-      }
-
-
-      /*
-       Prefer AIInference runner.
-       */
-
-      if (
-        window.FidelisAIInference &&
-        typeof window.FidelisAIInference.runSession ===
-        "function"
-      ) {
-
-        const output =
-          await window.FidelisAIInference.runSession(
-            session,
-            tensor
+        tensor =
+          window.FidelisAIModelAdapter.createInputTensor(
+            imageData,
+            model
           );
 
+      }
 
-        return {
-          output,
-          model,
-          quality: q,
-          scale: Number(model.scale || 1),
-          aiProcessed: true,
-          fallback: false
-        };
+      else {
+
+        throw new Error(
+          "FIDELIS: Cannot create input tensor."
+        );
 
       }
 
 
       /*
-       Direct ONNX Runtime session.
+       Input node.
        */
 
       const inputNames =
         session.inputNames || [];
 
 
-      const outputNames =
-        session.outputNames || [];
-
-
       if (!inputNames.length) {
 
         throw new Error(
-          "FIDELIS: Model has no input nodes."
+          "FIDELIS: ONNX model has no input."
         );
 
       }
@@ -525,30 +543,92 @@
 
       const feeds = {};
 
-      feeds[inputNames[0]] =
-        tensor;
 
+      feeds[
+        inputNames[0]
+      ] = tensor;
+
+
+      /*
+       Run model.
+       */
 
       const results =
-        await session.run(feeds);
+        await session.run(
+          feeds
+        );
 
 
-      let output =
+      const outputNames =
+        session.outputNames || [];
+
+
+      let output;
+
+
+      if (
         outputNames.length
-          ? results[outputNames[0]]
-          : Object.values(results)[0];
+      ) {
+
+        output =
+          results[
+            outputNames[0]
+          ];
+
+      }
+
+
+      if (!output) {
+
+        output =
+          Object.values(
+            results
+          )[0];
+
+      }
 
 
       if (!output) {
 
         throw new Error(
-          "FIDELIS: Model returned no output."
+          "FIDELIS: Real-ESRGAN returned no output."
+        );
+
+      }
+
+
+      /*
+       Convert output.
+       */
+
+      let canvas;
+
+
+      if (
+        typeof window.FidelisAIModelAdapter.outputToCanvas ===
+        "function"
+      ) {
+
+        canvas =
+          window.FidelisAIModelAdapter.outputToCanvas(
+            output,
+            model
+          );
+
+      }
+
+      else {
+
+        throw new Error(
+          "FIDELIS: Output adapter unavailable."
         );
 
       }
 
 
       return {
+
+        canvas,
 
         output,
 
@@ -557,11 +637,21 @@
         quality: q,
 
         scale:
-          Number(model.scale || 1),
+          Number(
+            model.scale || 1
+          ),
 
-        aiProcessed: true,
+        aiProcessed:
+          true,
 
-        fallback: false
+        fallback:
+          false,
+
+        engine:
+          "Real-ESRGAN",
+
+        backend:
+          "ONNX Runtime Web"
 
       };
 
@@ -569,53 +659,17 @@
 
 
     /* =====================================================
-       OUTPUT TO CANVAS
+       DISPOSE
        ===================================================== */
 
-    outputToCanvas(output, model) {
-
-      if (
-        window.FidelisAIModelAdapter &&
-        typeof window.FidelisAIModelAdapter.outputToCanvas ===
-        "function"
-      ) {
-
-        return window.FidelisAIModelAdapter.outputToCanvas(
-          output,
-          model
-        );
-
-      }
-
-
-      if (
-        window.FidelisAIInference &&
-        typeof window.FidelisAIInference.outputToImage ===
-        "function"
-      ) {
-
-        return window.FidelisAIInference.outputToImage(
-          output
-        );
-
-      }
-
-
-      throw new Error(
-        "FIDELIS: Output converter unavailable."
-      );
-
-    },
-
-
-    /* =====================================================
-       DISPOSE SESSION
-       ===================================================== */
-
-    async dispose(quality) {
+    async dispose(
+      quality
+    ) {
 
       const q =
-        this.normalizeQuality(quality);
+        this.normalizeQuality(
+          quality
+        );
 
 
       const session =
@@ -630,7 +684,8 @@
       try {
 
         if (
-          typeof session.release === "function"
+          typeof session.release ===
+          "function"
         ) {
 
           await session.release();
@@ -638,17 +693,20 @@
         }
 
         else if (
-          typeof session.dispose === "function"
+          typeof session.dispose ===
+          "function"
         ) {
 
           await session.dispose();
 
         }
 
-      } catch (error) {
+      }
+
+      catch (error) {
 
         console.warn(
-          "FIDELIS: Session dispose warning",
+          "FIDELIS session dispose:",
           error
         );
 
@@ -666,15 +724,19 @@
 
     async disposeAll() {
 
-      const qualities =
+      const keys =
         Array.from(
           this.sessions.keys()
         );
 
 
-      for (const q of qualities) {
+      for (
+        const quality of keys
+      ) {
 
-        await this.dispose(q);
+        await this.dispose(
+          quality
+        );
 
       }
 
@@ -687,15 +749,9 @@
 
     getStatus() {
 
-      const models =
-        window.FidelisModelRegistry
-          ? window.FidelisModelRegistry.getAll()
-          : null;
-
-
       return {
 
-        initialized:
+        runtime:
           this.initialized,
 
         sessions:
@@ -703,7 +759,26 @@
             this.sessions.keys()
           ),
 
-        models
+        standard:
+          Boolean(
+            this.getModelURL(
+              "standard"
+            )
+          ),
+
+        high:
+          Boolean(
+            this.getModelURL(
+              "high"
+            )
+          ),
+
+        ultra:
+          Boolean(
+            this.getModelURL(
+              "ultra"
+            )
+          )
 
       };
 
@@ -712,7 +787,8 @@
   };
 
 
-  window.FidelisAIModelBridge = Bridge;
+  window.FidelisAIModelBridge =
+    Bridge;
 
 
 })();
