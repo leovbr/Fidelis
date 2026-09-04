@@ -2,9 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#09090f">
-  <meta name="description" content="FIDELIS — Enhance. Don't Change. AI photo and video enhancement.">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#09090f"
+  >
+
+  <meta
+    name="description"
+    content="FIDELIS — Enhance. Don't Change. AI photo and video enhancement."
+  >
 
   <title>FIDELIS — Enhance. Don't Change.</title>
 
@@ -13,42 +25,71 @@
 
 <body>
 
-  <!-- ================= HEADER ================= -->
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
+
   <header class="header">
+
     <div class="header-inner">
 
       <div class="brand">
-        <div class="brand-mark">F</div>
+
+        <div class="brand-mark">
+          F
+        </div>
 
         <div>
+
           <h1>FIDELIS</h1>
-          <span>Enhance. Don't Change.</span>
+
+          <span>
+            Enhance. Don't Change.
+          </span>
+
         </div>
+
       </div>
 
-      <button id="vipButton" class="vip-button">
+
+      <button
+        id="vipButton"
+        class="vip-button"
+        type="button"
+      >
+
         <span>✦</span>
+
         VVIP
+
       </button>
 
     </div>
+
   </header>
 
 
-  <!-- ================= MAIN ================= -->
+  <!-- =====================================================
+       MAIN
+       ===================================================== -->
+
   <main class="main-container">
 
+
     <!-- HERO -->
+
     <section class="hero-section">
 
       <div class="hero-badge">
         AI ENHANCEMENT ENGINE
       </div>
 
+
       <h2>
         Make it clearer.<br>
         <span>Keep it you.</span>
       </h2>
+
 
       <p>
         FIDELIS enhances resolution, sharpness and detail
@@ -58,7 +99,10 @@
     </section>
 
 
-    <!-- ================= MODE ================= -->
+    <!-- =====================================================
+         MODE SELECTOR
+         ===================================================== -->
+
     <section class="mode-section">
 
       <div class="mode-selector">
@@ -68,17 +112,24 @@
           class="mode-button active"
           type="button"
         >
+
           <span>◉</span>
+
           Photo
+
         </button>
+
 
         <button
           id="videoMode"
           class="mode-button"
           type="button"
         >
+
           <span>▶</span>
+
           Video
+
         </button>
 
       </div>
@@ -86,7 +137,10 @@
     </section>
 
 
-    <!-- ================= UPLOAD ================= -->
+    <!-- =====================================================
+         UPLOAD
+         ===================================================== -->
+
     <section class="upload-section">
 
       <div
@@ -101,17 +155,21 @@
           hidden
         >
 
+
         <div class="upload-icon">
           ↑
         </div>
+
 
         <h3 id="uploadTitle">
           Drop your photo here
         </h3>
 
+
         <p id="uploadDescription">
           or choose a file from your device
         </p>
+
 
         <button
           id="uploadButton"
@@ -120,6 +178,7 @@
         >
           Choose File
         </button>
+
 
         <small id="uploadLimit">
           JPG, PNG, WEBP • Max 20MB
@@ -130,7 +189,10 @@
     </section>
 
 
-    <!-- ================= PREVIEW ================= -->
+    <!-- =====================================================
+         PREVIEW
+         ===================================================== -->
+
     <section
       id="previewSection"
       class="preview-section hidden"
@@ -139,20 +201,23 @@
       <div class="section-header">
 
         <div>
+
           <span class="section-label">
             SELECTED MEDIA
           </span>
 
+
           <h3 id="fileName">
             image.jpg
           </h3>
+
         </div>
+
 
         <button
           id="removeButton"
           class="icon-button"
           type="button"
-          aria-label="Remove file"
         >
           ×
         </button>
@@ -172,22 +237,29 @@
 
 
       <!-- QUALITY -->
+
       <div class="quality-section">
 
         <div class="section-header compact">
 
           <div>
+
             <span class="section-label">
               ENHANCEMENT
             </span>
 
-            <h3>Choose quality</h3>
+
+            <h3>
+              Choose quality
+            </h3>
+
           </div>
 
         </div>
 
 
         <div class="quality-options">
+
 
           <button
             class="quality-option active"
@@ -199,10 +271,19 @@
               2×
             </div>
 
+
             <div class="quality-info">
-              <strong>Standard</strong>
-              <span>Fast AI enhancement</span>
+
+              <strong>
+                Standard
+              </strong>
+
+              <span>
+                Fast AI enhancement
+              </span>
+
             </div>
+
 
             <div class="quality-check">
               ✓
@@ -221,10 +302,19 @@
               2×
             </div>
 
+
             <div class="quality-info">
-              <strong>High</strong>
-              <span>More detail & sharpness</span>
+
+              <strong>
+                High
+              </strong>
+
+              <span>
+                More detail & sharpness
+              </span>
+
             </div>
+
 
             <div class="quality-check">
               ✓
@@ -243,14 +333,24 @@
               4×
             </div>
 
+
             <div class="quality-info">
-              <strong>Ultra</strong>
-              <span>Maximum AI enhancement</span>
+
+              <strong>
+                Ultra
+              </strong>
+
+              <span>
+                Maximum AI enhancement
+              </span>
+
             </div>
+
 
             <div class="quality-badge">
               VVIP
             </div>
+
 
             <div class="quality-check">
               ✓
@@ -263,12 +363,14 @@
       </div>
 
 
-      <!-- FACE PRESERVATION -->
+      <!-- FACE PROTECTION -->
+
       <div class="face-preservation">
 
         <div class="face-icon">
           ◉
         </div>
+
 
         <div class="face-content">
 
@@ -282,12 +384,15 @@
 
         </div>
 
+
         <div class="face-status">
           ON
         </div>
 
       </div>
 
+
+      <!-- ENHANCE -->
 
       <button
         id="enhanceButton"
@@ -308,23 +413,31 @@
     </section>
 
 
-    <!-- ================= PROCESSING ================= -->
+    <!-- =====================================================
+         PROCESSING
+         ===================================================== -->
+
     <section
       id="processingSection"
       class="processing-section hidden"
     >
 
       <div class="processing-orb">
+
         <div class="spinner"></div>
+
       </div>
+
 
       <span class="section-label">
         FIDELIS AI ENGINE
       </span>
 
+
       <h3 id="processingText">
         Preparing AI engine...
       </h3>
+
 
       <div class="progress-container">
 
@@ -333,16 +446,18 @@
           <div
             id="progressBar"
             class="progress-bar"
-            style="width: 0%"
+            style="width:0%"
           ></div>
 
         </div>
+
 
         <span id="progressPercent">
           0%
         </span>
 
       </div>
+
 
       <p>
         Your original media remains unchanged.
@@ -351,7 +466,10 @@
     </section>
 
 
-    <!-- ================= RESULT ================= -->
+    <!-- =====================================================
+         RESULT
+         ===================================================== -->
+
     <section
       id="resultSection"
       class="result-section hidden"
@@ -360,14 +478,18 @@
       <div class="result-header">
 
         <div>
+
           <span class="section-label">
             COMPLETE
           </span>
 
+
           <h3>
             Enhancement finished
           </h3>
+
         </div>
+
 
         <div class="result-quality">
           AI
@@ -391,7 +513,9 @@
 
         <div class="result-stat">
 
-          <span>QUALITY</span>
+          <span>
+            QUALITY
+          </span>
 
           <strong id="resultQuality">
             AI Enhanced
@@ -399,9 +523,12 @@
 
         </div>
 
+
         <div class="result-stat">
 
-          <span>IDENTITY</span>
+          <span>
+            IDENTITY
+          </span>
 
           <strong>
             Protected
@@ -432,25 +559,32 @@
     </section>
 
 
-    <!-- ================= VVIP ================= -->
+    <!-- =====================================================
+         VVIP
+         ===================================================== -->
+
     <section class="vvip-section">
 
       <div class="vvip-card">
 
         <div class="vvip-glow"></div>
 
+
         <span class="section-label">
           FIDELIS VVIP
         </span>
+
 
         <h3>
           Push your media further.
         </h3>
 
+
         <p>
           Unlock Ultra AI enhancement, larger resolutions,
           advanced processing and priority features.
         </p>
+
 
         <button
           id="upgradeButton"
@@ -467,16 +601,21 @@
   </main>
 
 
-  <!-- ================= FOOTER ================= -->
+  <!-- =====================================================
+       FOOTER
+       ===================================================== -->
+
   <footer class="footer">
 
     <div class="footer-brand">
       FIDELIS
     </div>
 
+
     <p>
       Enhance. Don't Change.
     </p>
+
 
     <span>
       © 2026 FIDELIS AI
@@ -485,14 +624,20 @@
   </footer>
 
 
-  <!-- ================= MODAL OVERLAY ================= -->
+  <!-- =====================================================
+       MODAL OVERLAY
+       ===================================================== -->
+
   <div
     id="modalOverlay"
     class="modal-overlay hidden"
   ></div>
 
 
-  <!-- ================= VVIP MODAL ================= -->
+  <!-- =====================================================
+       VVIP MODAL
+       ===================================================== -->
+
   <div
     id="vipModal"
     class="modal hidden"
@@ -508,18 +653,22 @@
       ×
     </button>
 
+
     <span class="section-label">
       FIDELIS VVIP
     </span>
+
 
     <h2>
       Unlock Ultra.
     </h2>
 
+
     <p>
       Get access to maximum AI enhancement,
       higher resolution output and future advanced AI tools.
     </p>
+
 
     <div class="vip-features">
 
@@ -528,15 +677,18 @@
         Ultra 4× AI enhancement
       </div>
 
+
       <div>
         <span>✓</span>
         Higher output resolution
       </div>
 
+
       <div>
         <span>✓</span>
         Advanced enhancement engine
       </div>
+
 
       <div>
         <span>✓</span>
@@ -544,6 +696,7 @@
       </div>
 
     </div>
+
 
     <button
       id="upgradeModalButton"
@@ -556,7 +709,9 @@
   </div>
 
 
-  <!-- ================= JAVASCRIPT ================= -->
+  <!-- =====================================================
+       AI SYSTEM
+       ===================================================== -->
 
   <script src="js/ai-engine.js"></script>
 
@@ -567,10 +722,13 @@
 
   <script src="js/ai-model-loader.js"></script>
 
-  <!-- NEW V2 MODEL SYSTEM -->
   <script src="js/ai-model-registry.js"></script>
   <script src="js/ai-model-loader-v2.js"></script>
 
+  <!-- REAL MODEL CONFIG -->
+  <script src="js/ai-real-esrgan-config.js"></script>
+
+  <!-- MODEL SYSTEM -->
   <script src="js/ai-model-adapter.js"></script>
   <script src="js/ai-model-sync.js"></script>
   <script src="js/ai-model-bootstrap.js"></script>
@@ -578,11 +736,11 @@
   <script src="js/ai-model-health.js"></script>
   <script src="js/ai-model-installer.js"></script>
 
-  <!-- AI RUNTIME -->
+  <!-- RUNTIME -->
   <script src="js/ai-runtime.js"></script>
   <script src="js/ai-inference.js"></script>
 
-  <!-- AI BRIDGE -->
+  <!-- BRIDGE -->
   <script src="js/ai-model-bridge.js"></script>
 
   <!-- IMAGE PIPELINE -->
@@ -594,7 +752,7 @@
   <!-- DIAGNOSTICS -->
   <script src="js/ai-diagnostics.js"></script>
 
-  <!-- FACE PROTECTION -->
+  <!-- FACE -->
   <script src="js/face-guard.js"></script>
   <script src="js/face-preservation.js"></script>
 
@@ -611,4 +769,4 @@
   <script src="js/app.js"></script>
 
 </body>
-</html>
+        </html>
