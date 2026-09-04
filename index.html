@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="FIDELIS - Enhance your photos and videos without changing who you are."
+    >
+
+    <meta name="theme-color" content="#08090d">
+
+    <title>FIDELIS — Enhance. Don't Change.</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- =========================================
+         APP HEADER
+    ========================================== -->
+
+    <header class="app-header">
+
+        <div class="brand">
+            <div class="brand-icon">F</div>
+
+            <div class="brand-text">
+                <h1>FIDELIS</h1>
+                <span>Enhance. Don't Change.</span>
+            </div>
+        </div>
+
+        <button
+            class="vip-button"
+            id="vipButton"
+            type="button"
+        >
+            <span>👑</span>
+            VVIP
+        </button>
+
+    </header>
+
+
+    <!-- =========================================
+         MAIN APP
+    ========================================== -->
+
+    <main class="app-container">
+
+        <!-- HERO -->
+
+        <section class="hero">
+
+            <div class="hero-badge">
+                ✦ AI MEDIA ENHANCER
+            </div>
+
+            <h2>
+                Make it clearer.<br>
+                <span>Keep it you.</span>
+            </h2>
+
+            <p>
+                Enhance your photos and videos while preserving
+                the original appearance and identity.
+            </p>
+
+        </section>
+
+
+        <!-- =====================================
+             MODE SELECTOR
+        ====================================== -->
+
+        <section class="mode-selector">
+
+            <button
+                class="mode-button active"
+                id="photoMode"
+                type="button"
+            >
+                <span class="mode-icon">📷</span>
+
+                <span>
+                    <strong>Photo</strong>
+                    <small>Enhance images</small>
+                </span>
+            </button>
+
+
+            <button
+                class="mode-button"
+                id="videoMode"
+                type="button"
+            >
+                <span class="mode-icon">🎥</span>
+
+                <span>
+                    <strong>Video</strong>
+                    <small>Enhance videos</small>
+                </span>
+            </button>
+
+        </section>
+
+
+        <!-- =====================================
+             UPLOAD AREA
+        ====================================== -->
+
+        <section class="upload-section">
+
+            <input
+                type="file"
+                id="fileInput"
+                accept="image/*"
+                hidden
+            >
+
+            <div
+                class="upload-box"
+                id="uploadBox"
+            >
+
+                <div class="upload-icon">
+                    ↑
+                </div>
+
+                <h3 id="uploadTitle">
+                    Upload your photo
+                </h3>
+
+                <p id="uploadDescription">
+                    Drop an image here or tap to browse
+                </p>
+
+                <button
+                    class="upload-button"
+                    id="uploadButton"
+                    type="button"
+                >
+                    Choose File
+                </button>
+
+                <span class="upload-limit" id="uploadLimit">
+                    JPG, PNG, WEBP
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================
+             PREVIEW
+        ====================================== -->
+
+        <section
+            class="preview-section hidden"
+            id="previewSection"
+        >
+
+            <div class="preview-header">
+
+                <div>
+                    <span class="preview-label">
+                        ORIGINAL
+                    </span>
+
+                    <h3 id="fileName">
+                        image.jpg
+                    </h3>
+                </div>
+
+                <button
+                    class="remove-button"
+                    id="removeButton"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+            </div>
+
+
+            <div class="media-preview" id="mediaPreview">
+
+                <!-- Image/video will be inserted here -->
+
+            </div>
+
+
+            <!-- =================================
+                 ENHANCEMENT OPTIONS
+            ================================== -->
+
+            <div class="enhancement-panel">
+
+                <div class="panel-title">
+                    <span>Enhancement</span>
+
+                    <span class="free-label">
+                        FREE
+                    </span>
+                </div>
+
+
+                <div class="quality-options">
+
+                    <button
+                        class="quality-option active"
+                        data-quality="standard"
+                        type="button"
+                    >
+                        <strong>Standard</strong>
+                        <small>2× Enhance</small>
+                    </button>
+
+
+                    <button
+                        class="quality-option"
+                        data-quality="high"
+                        type="button"
+                    >
+                        <strong>High</strong>
+                        <small>Better detail</small>
+                    </button>
+
+
+                    <button
+                        class="quality-option vip-quality"
+                        data-quality="ultra"
+                        type="button"
+                    >
+                        <strong>Ultra 👑</strong>
+                        <small>Up to 4×</small>
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================
+                 FACE PRESERVATION
+            ================================== -->
+
+            <div class="preservation-card">
+
+                <div class="preservation-icon">
+                    🛡️
+                </div>
+
+                <div class="preservation-text">
+
+                    <strong>
+                        Face Preservation
+                    </strong>
+
+                    <p>
+                        FIDELIS prioritizes preserving
+                        the original facial appearance.
+                    </p>
+
+                </div>
+
+                <div class="preservation-status">
+                    ON
+                </div>
+
+            </div>
+
+
+            <!-- =================================
+                 ENHANCE BUTTON
+            ================================== -->
+
+            <button
+                class="enhance-button"
+                id="enhanceButton"
+                type="button"
+            >
+
+                <span class="enhance-icon">
+                    ✦
+                </span>
+
+                <span>
+                    Enhance Media
+                </span>
+
+            </button>
+
+        </section>
+
+
+        <!-- =====================================
+             PROCESSING
+        ====================================== -->
+
+        <section
+            class="processing-section hidden"
+            id="processingSection"
+        >
+
+            <div class="processing-animation">
+
+                <div class="processing-ring"></div>
+
+                <div class="processing-symbol">
+                    F
+                </div>
+
+            </div>
+
+            <h3>
+                Enhancing your media...
+            </h3>
+
+            <p id="processingText">
+                Improving clarity while preserving details.
+            </p>
+
+
+            <div class="progress-container">
+
+                <div
+                    class="progress-bar"
+                    id="progressBar"
+                ></div>
+
+            </div>
+
+            <span
+                class="progress-percent"
+                id="progressPercent"
+            >
+                0%
+            </span>
+
+        </section>
+
+
+        <!-- =====================================
+             RESULT
+        ====================================== -->
+
+        <section
+            class="result-section hidden"
+            id="resultSection"
+        >
+
+            <div class="result-header">
+
+                <div>
+
+                    <span class="result-label">
+                        ENHANCED
+                    </span>
+
+                    <h3>
+                        Your media is ready
+                    </h3>
+
+                </div>
+
+                <div class="result-check">
+                    ✓
+                </div>
+
+            </div>
+
+
+            <div
+                class="result-preview"
+                id="resultPreview"
+            >
+                <!-- Enhanced media -->
+            </div>
+
+
+            <div class="result-info">
+
+                <div>
+                    <span>Quality</span>
+                    <strong id="resultQuality">
+                        2×
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Face</span>
+                    <strong>
+                        Preserved
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Mode</span>
+                    <strong>
+                        Standard
+                    </strong>
+                </div>
+
+            </div>
+
+
+            <button
+                class="download-button"
+                id="downloadButton"
+                type="button"
+            >
+                ↓ Download Enhanced
+            </button>
+
+
+            <button
+                class="new-file-button"
+                id="newFileButton"
+                type="button"
+            >
+                Enhance Another
+            </button>
+
+        </section>
+
+
+        <!-- =====================================
+             VVIP PROMOTION
+        ====================================== -->
+
+        <section class="vvip-card">
+
+            <div class="vvip-glow"></div>
+
+            <div class="vvip-content">
+
+                <span class="vvip-badge">
+                    👑 FIDELIS VVIP
+                </span>
+
+                <h3>
+                    Go beyond standard quality.
+                </h3>
+
+                <p>
+                    Unlock higher resolution,
+                    advanced AI enhancement,
+                    and professional video processing.
+                </p>
+
+
+                <div class="vvip-features">
+
+                    <span>✓ Up to 4× Resolution</span>
+                    <span>✓ Advanced Face Preservation</span>
+                    <span>✓ AI Video Enhancement</span>
+                    <span>✓ Batch Processing</span>
+
+                </div>
+
+
+                <button
+                    class="vvip-upgrade-button"
+                    id="upgradeButton"
+                    type="button"
+                >
+                    Unlock VVIP
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================================
+         VVIP MODAL
+    ========================================== -->
+
+    <div
+        class="modal hidden"
+        id="vipModal"
+    >
+
+        <div class="modal-overlay" id="modalOverlay"></div>
+
+        <div class="modal-box">
+
+            <button
+                class="modal-close"
+                id="modalClose"
+                type="button"
+            >
+                ✕
+            </button>
+
+            <div class="modal-crown">
+                👑
+            </div>
+
+            <h2>
+                FIDELIS VVIP
+            </h2>
+
+            <p>
+                Unlock the highest enhancement quality
+                while keeping your original appearance.
+            </p>
+
+
+            <div class="vip-list">
+
+                <div>
+                    <span>✓</span>
+                    4× Super Resolution
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Advanced Face Preservation
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    AI Video Enhancement
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Higher Output Resolution
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Batch Processing
+                </div>
+
+            </div>
+
+
+            <button
+                class="modal-upgrade"
+                type="button"
+            >
+                VVIP Coming Soon
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================
+         FOOTER
+    ========================================== -->
+
+    <footer>
+
+        <div class="footer-brand">
+            FIDELIS
+        </div>
+
+        <p>
+            Enhance. Don't Change.
+        </p>
+
+        <span>
+            © 2026 FIDELIS
+        </span>
+
+    </footer>
+
+
+    <!-- =========================================
+         JAVASCRIPT
+    ========================================== -->
+
+    <script src="js/app.js"></script>
+
+</body>
+                  </html>
