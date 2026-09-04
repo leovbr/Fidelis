@@ -1,9 +1,30 @@
 (function () {
+
   "use strict";
 
-  const FidelisImagePipeline = {
+  const Pipeline = {
 
-    version: "1.0.0",
+
+    normalizeQuality(quality) {
+
+      if (
+        quality === "ultra" ||
+        quality === "vvip"
+      ) {
+        return "ultra";
+      }
+
+      if (
+        quality === "high" ||
+        quality === "hq"
+      ) {
+        return "high";
+      }
+
+      return "standard";
+
+    },
+
 
     async enhance(
       source,
@@ -11,431 +32,776 @@
       options = {}
     ) {
 
-      if (!source) {
-        throw new Error(
-          "Source image tidak ditemukan."
+      const q =
+        this.normalizeQuality(
+          quality
         );
-      }
+
+      const onProgress =
+        options.onProgress;
+
+      this.report(
+        onProgress,
+        0,
+        "Preparing image..."
+      );
 
       /*
-       * Convert source ke canvas.
-       */
-      const sourceCanvas =
-        await this.toCanvas(source);
+       Convert source to canvas.
+      */
 
-      const width =
-        sourceCanvas.width;
-
-      const height =
-        sourceCanvas.height;
-
-      if (!width || !height) {
-        throw new Error(
-          "Ukuran gambar tidak valid."
+      const inputCanvas =
+        await this.toCanvas(
+          source
         );
-      }
 
-      /*
-       * Cari model.
-       */
       if (
-        typeof FidelisAIModelConfig ===
-        "undefined"
+        !inputCanvas ||
+        !inputCanvas.width ||
+        !inputCanvas.height
       ) {
+
         throw new Error(
-          "AI Model Config belum tersedia."
+          "FIDELIS: Invalid input canvas."
         );
+
       }
 
-      const normalizedQuality =
-        FidelisAIModelConfig
-          .normalizeQuality(quality);
+      /*
+       Protect browser memory.
+      */
 
-      const model =
-        FidelisAIModelConfig
-          .get(normalizedQuality);
+      const maxInput =
+        Number(
+          options.maxInputDimension ||
+          4096
+        );
+
+      let workingCanvas =
+        inputCanvas;
+
+      if (
+        Math.max(
+          inputCanvas.width,
+          inputCanvas.height
+        ) > maxInput
+      ) {
+
+        workingCanvas =
+          this.resizeCanvas(
+            inputCanvas,
+            maxInput
+          );
+
+      }
+
+      this.report(
+        onProgress,
+        8,
+        "Selecting AI model..."
+      );
+
+      /*
+       Get model.
+      */
+
+      let model = null;
+
+      if (
+        window.FidelisRealESRGAN &&
+        typeof window.FidelisRealESRGAN.get ===
+        "function"
+      ) {
+
+        model =
+          window.FidelisRealESRGAN.get(
+            q
+          );
+
+      }
+
+      if (
+        !model &&
+        window.FidelisModelRegistry
+      ) {
+
+        model =
+          window.FidelisModelRegistry.get(
+            q
+          );
+
+      }
 
       if (!model) {
+
         throw new Error(
-          "Model tidak ditemukan."
+          "FIDELIS: AI model not found."
         );
+
       }
 
-      /*
-       * Scale model.
-       */
       const scale =
-        Number(model.scale) || 2;
+        Number(
+          model.scale || 1
+        );
 
       /*
-       * Tentukan tile size berdasarkan device.
-       */
-      let tileSettings = {
-        tileSize: 512,
-        overlap: 32
-      };
+       Processor for each tile.
+      */
 
-      if (
-        typeof FidelisTileEngine !==
-        "undefined"
-      ) {
-        tileSettings =
-          FidelisTileEngine
-            .getRecommendedSettings(
-              width,
-              height
-            );
-      }
-
-      if (options.tileSize) {
-        tileSettings.tileSize =
-          options.tileSize;
-      }
-
-      if (options.overlap !== undefined) {
-        tileSettings.overlap =
-          options.overlap;
-      }
-
-      /*
-       * Processor AI.
-       */
       const processTile =
         async (
           tileCanvas,
-          tile,
-          index,
-          total
+          tileInfo
         ) => {
 
-          if (
-            typeof FidelisAIModelBridge ===
-            "undefined"
-          ) {
-            throw new Error(
-              "AI Model Bridge belum tersedia."
+          const imageData =
+            this.getImageData(
+              tileCanvas
             );
-          }
 
-          /*
-           * Progress.
-           */
+          this.report(
+            onProgress,
+            10 +
+            (
+              tileInfo.index /
+              Math.max(
+                1,
+                tileInfo.total
+              )
+            ) * 75,
+            `Running ${model.name || "AI"}...`
+          );
+
           if (
-            typeof options.onProgress ===
+            !window.FidelisAIModelBridge ||
+            typeof window.FidelisAIModelBridge.run !==
             "function"
           ) {
-            options.onProgress({
-              stage: "ai",
-              current: index,
-              total,
-              percent:
-                Math.round(
-                  (index / total) * 100
-                )
-            });
+
+            throw new Error(
+              "FIDELIS: AI model bridge unavailable."
+            );
+
           }
 
-          /*
-           * Jalankan ONNX.
-           */
           const result =
-            await FidelisAIModelBridge.run(
-              tileCanvas,
-              normalizedQuality
+            await window.FidelisAIModelBridge.run(
+              imageData,
+              q,
+              {
+
+                onProgress:
+                  options.onModelProgress
+
+              }
             );
 
           if (
             !result ||
             !result.canvas
           ) {
+
             throw new Error(
-              "AI tidak menghasilkan output."
+              "FIDELIS: AI model returned no canvas."
             );
+
           }
 
-          /*
-           * Pastikan output sesuai scale.
-           */
-          const expectedWidth =
-            Math.round(
-              tile.width * scale
-            );
+          return result;
 
-          const expectedHeight =
-            Math.round(
-              tile.height * scale
-            );
-
-          /*
-           * Bila model menghasilkan ukuran
-           * berbeda, normalisasi ke ukuran target.
-           */
-          if (
-            result.canvas.width !==
-              expectedWidth ||
-            result.canvas.height !==
-              expectedHeight
-          ) {
-
-            const normalized =
-              document.createElement(
-                "canvas"
-              );
-
-            normalized.width =
-              expectedWidth;
-
-            normalized.height =
-              expectedHeight;
-
-            const ctx =
-              normalized.getContext(
-                "2d"
-              );
-
-            ctx.drawImage(
-              result.canvas,
-              0,
-              0,
-              expectedWidth,
-              expectedHeight
-            );
-
-            return normalized;
-          }
-
-          return result.canvas;
         };
 
+
       /*
-       * Kalau TileEngine tersedia,
-       * gunakan tiled inference.
+       Decide whether tiling is necessary.
+      */
+
+      const settings =
+        window.FidelisTileEngine &&
+        typeof window.FidelisTileEngine.getRecommendedSettings ===
+        "function"
+          ? window.FidelisTileEngine.getRecommendedSettings(
+              workingCanvas.width,
+              workingCanvas.height
+            )
+          : {
+              tileSize: 384,
+              overlap: 32
+            };
+
+
+      const shouldTile =
+        workingCanvas.width >
+          settings.tileSize ||
+        workingCanvas.height >
+          settings.tileSize;
+
+
+      let result;
+
+
+      /*
+       DIRECT INFERENCE
        */
-      if (
-        typeof FidelisTileEngine !==
-        "undefined"
-      ) {
 
-        const result =
-          await FidelisTileEngine.process(
-            sourceCanvas,
-            processTile,
+      if (!shouldTile) {
+
+        result =
+          await processTile(
+            workingCanvas,
             {
-              tileSize:
-                tileSettings.tileSize,
-
-              overlap:
-                tileSettings.overlap,
-
-              scale,
-
-              onProgress:
-                options.onProgress
+              x: 0,
+              y: 0,
+              width:
+                workingCanvas.width,
+              height:
+                workingCanvas.height,
+              index: 0,
+              total: 1
             }
           );
 
-        return {
-          canvas: result.canvas,
-
-          width: result.width,
-          height: result.height,
-
-          quality:
-            normalizedQuality,
-
-          scale,
-
-          tilesProcessed:
-            result.tilesProcessed,
-
-          tileSize:
-            result.tileSize,
-
-          aiProcessed: true,
-
-          fallback: false,
-
-          engine: "FIDELIS AI",
-
-          backend:
-            typeof FidelisRuntime !==
-            "undefined"
-              ? FidelisRuntime
-                  .getStatus()
-                  .backend || "unknown"
-              : "unknown"
-        };
       }
 
+
       /*
-       * Fallback jika TileEngine belum tersedia.
+       TILE INFERENCE
        */
-      const result =
-        await FidelisAIModelBridge.run(
-          sourceCanvas,
-          normalizedQuality
+
+      else {
+
+        if (
+          !window.FidelisTileEngine ||
+          typeof window.FidelisTileEngine.process !==
+          "function"
+        ) {
+
+          throw new Error(
+            "FIDELIS: Tile engine unavailable."
+          );
+
+        }
+
+        result =
+          await window.FidelisTileEngine.process(
+            workingCanvas,
+            processTile,
+            {
+
+              tileSize:
+                settings.tileSize,
+
+              overlap:
+                settings.overlap,
+
+              onProgress:
+                onProgress
+
+            }
+          );
+
+      }
+
+
+      if (
+        !result
+      ) {
+
+        throw new Error(
+          "FIDELIS: Enhancement failed."
         );
 
+      }
+
+
+      const outputCanvas =
+        result.canvas ||
+        result;
+
+
+      if (
+        !outputCanvas ||
+        !outputCanvas.width ||
+        !outputCanvas.height
+      ) {
+
+        throw new Error(
+          "FIDELIS: Invalid AI output."
+        );
+
+      }
+
+
+      /*
+       Safety output limit.
+      */
+
+      const maxOutput =
+        Number(
+          options.maxOutputDimension ||
+          8192
+        );
+
+
+      let finalCanvas =
+        outputCanvas;
+
+
+      if (
+        Math.max(
+          outputCanvas.width,
+          outputCanvas.height
+        ) > maxOutput
+      ) {
+
+        finalCanvas =
+          this.resizeCanvas(
+            outputCanvas,
+            maxOutput
+          );
+
+      }
+
+
+      this.report(
+        onProgress,
+        96,
+        "Finalizing AI result..."
+      );
+
+
+      /*
+       Give browser a moment before encoding.
+      */
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            0
+          )
+      );
+
+
+      this.report(
+        onProgress,
+        100,
+        "AI enhancement complete."
+      );
+
+
       return {
-        canvas: result.canvas,
 
-        width: result.canvas.width,
-        height: result.canvas.height,
+        canvas:
+          finalCanvas,
 
-        quality:
-          normalizedQuality,
+        width:
+          finalCanvas.width,
+
+        height:
+          finalCanvas.height,
 
         scale,
 
-        tilesProcessed: 1,
+        model,
 
-        tileSize:
-          sourceCanvas.width,
+        quality:
+          q,
 
-        aiProcessed: true,
+        aiProcessed:
+          true,
 
-        fallback: false,
+        fallback:
+          false,
 
-        engine: "FIDELIS AI",
+        engine:
+          "Real-ESRGAN",
 
         backend:
-          result.backend || "unknown"
+          "ONNX Runtime Web"
+
       };
+
     },
 
 
-    async toCanvas(source) {
+    /*
+     ======================================================
+     SOURCE → CANVAS
+     ======================================================
+    */
+
+    async toCanvas(
+      source
+    ) {
 
       if (
         source instanceof HTMLCanvasElement
       ) {
+
         return source;
+
       }
 
-      if (
-        typeof source === "string"
-      ) {
-
-        const image =
-          await this.loadImage(source);
-
-        return this.imageToCanvas(
-          image
-        );
-      }
 
       if (
         source instanceof HTMLImageElement
       ) {
-        return this.imageToCanvas(
-          source
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width =
+          source.naturalWidth ||
+          source.width;
+
+        canvas.height =
+          source.naturalHeight ||
+          source.height;
+
+        const ctx =
+          canvas.getContext(
+            "2d"
+          );
+
+        ctx.drawImage(
+          source,
+          0,
+          0,
+          canvas.width,
+          canvas.height
         );
+
+        return canvas;
+
       }
 
+
       if (
-        typeof ImageBitmap !==
-        "undefined" &&
         source instanceof ImageBitmap
       ) {
-        return this.imageToCanvas(
-          source
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width =
+          source.width;
+
+        canvas.height =
+          source.height;
+
+        const ctx =
+          canvas.getContext(
+            "2d"
+          );
+
+        ctx.drawImage(
+          source,
+          0,
+          0
         );
+
+        return canvas;
+
       }
+
 
       if (
         source instanceof Blob ||
         source instanceof File
       ) {
 
-        const url =
-          URL.createObjectURL(source);
-
-        try {
-
-          const image =
-            await this.loadImage(url);
-
-          return this.imageToCanvas(
-            image
+        const bitmap =
+          await createImageBitmap(
+            source
           );
 
-        } finally {
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
 
-          URL.revokeObjectURL(url);
+        canvas.width =
+          bitmap.width;
+
+        canvas.height =
+          bitmap.height;
+
+        const ctx =
+          canvas.getContext(
+            "2d"
+          );
+
+        ctx.drawImage(
+          bitmap,
+          0,
+          0
+        );
+
+        if (
+          typeof bitmap.close ===
+          "function"
+        ) {
+
+          bitmap.close();
 
         }
+
+        return canvas;
+
       }
 
+
+      if (
+        typeof source === "string"
+      ) {
+
+        const image =
+          await this.loadImage(
+            source
+          );
+
+        return this.toCanvas(
+          image
+        );
+
+      }
+
+
       throw new Error(
-        "Format source gambar tidak didukung."
+        "FIDELIS: Unsupported image source."
       );
+
     },
 
 
-    loadImage(url) {
+    /*
+     ======================================================
+     LOAD IMAGE
+     ======================================================
+    */
+
+    loadImage(
+      source
+    ) {
 
       return new Promise(
-        (resolve, reject) => {
+        (
+          resolve,
+          reject
+        ) => {
 
           const image =
             new Image();
 
-          image.onload = () => {
-            resolve(image);
-          };
+          image.onload =
+            () => resolve(
+              image
+            );
 
-          image.onerror = () => {
-            reject(
+          image.onerror =
+            () => reject(
               new Error(
-                "Gagal membaca gambar."
+                "Failed to load image."
               )
             );
-          };
 
-          image.src = url;
+          image.src =
+            source;
 
         }
       );
+
     },
 
 
-    imageToCanvas(image) {
+    /*
+     ======================================================
+     GET IMAGE DATA
+     ======================================================
+    */
 
-      const canvas =
-        document.createElement("canvas");
-
-      canvas.width =
-        image.naturalWidth ||
-        image.width;
-
-      canvas.height =
-        image.naturalHeight ||
-        image.height;
+    getImageData(
+      canvas
+    ) {
 
       const ctx =
-        canvas.getContext("2d", {
-          willReadFrequently: true
-        });
-
-      if (!ctx) {
-        throw new Error(
-          "Canvas context tidak tersedia."
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently: true
+          }
         );
-      }
 
-      ctx.drawImage(
-        image,
+      return ctx.getImageData(
         0,
         0,
         canvas.width,
         canvas.height
       );
 
-      return canvas;
+    },
+
+
+    /*
+     ======================================================
+     RESIZE
+     ======================================================
+    */
+
+    resizeCanvas(
+      canvas,
+      maxDimension
+    ) {
+
+      const largest =
+        Math.max(
+          canvas.width,
+          canvas.height
+        );
+
+      if (
+        largest <=
+        maxDimension
+      ) {
+
+        return canvas;
+
+      }
+
+      const ratio =
+        maxDimension /
+        largest;
+
+      const width =
+        Math.max(
+          1,
+          Math.round(
+            canvas.width *
+            ratio
+          )
+        );
+
+      const height =
+        Math.max(
+          1,
+          Math.round(
+            canvas.height *
+            ratio
+          )
+        );
+
+      const result =
+        document.createElement(
+          "canvas"
+        );
+
+      result.width =
+        width;
+
+      result.height =
+        height;
+
+      const ctx =
+        result.getContext(
+          "2d"
+        );
+
+      ctx.imageSmoothingEnabled =
+        true;
+
+      ctx.imageSmoothingQuality =
+        "high";
+
+      ctx.drawImage(
+        canvas,
+        0,
+        0,
+        width,
+        height
+      );
+
+      return result;
+
+    },
+
+
+    /*
+     ======================================================
+     PROGRESS
+     ======================================================
+    */
+
+    report(
+      callback,
+      value,
+      text
+    ) {
+
+      if (
+        typeof callback !==
+        "function"
+      ) {
+
+        return;
+
+      }
+
+      callback(
+
+        Math.max(
+          0,
+          Math.min(
+            100,
+            Number(value) || 0
+          )
+        ),
+
+        text || ""
+
+      );
+
+    },
+
+
+    /*
+     ======================================================
+     STATUS
+     ======================================================
+    */
+
+    getStatus() {
+
+      return {
+
+        ready:
+          Boolean(
+            window.FidelisAIModelBridge
+          ),
+
+        tileEngine:
+          Boolean(
+            window.FidelisTileEngine
+          ),
+
+        model:
+          Boolean(
+            window.FidelisModelRegistry
+          )
+
+      };
+
     }
+
   };
 
+
   window.FidelisImagePipeline =
-    FidelisImagePipeline;
+    Pipeline;
 
 })();
