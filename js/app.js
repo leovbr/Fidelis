@@ -1,809 +1,581 @@
+/* =========================================================
+   FIDELIS APP CONTROLLER
+   ========================================================= */
+
 (function () {
-    "use strict";
+  "use strict";
+
+  const state = {
+    mode: "photo",
+    quality: "standard",
+    file: null,
+    result: null,
+    busy: false
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function notify(message, type = "info") {
+    if (
+      window.FidelisNotifications &&
+      typeof window.FidelisNotifications.show === "function"
+    ) {
+      window.FidelisNotifications.show(message, type);
+      return;
+    }
+
+    console.log(`[FIDELIS ${type}]`, message);
+  }
+
+  function setHidden(element, hidden) {
+    if (!element) return;
+
+    element.classList.toggle("hidden", hidden);
+  }
+
+  function setText(id, text) {
+    const element = $(id);
+    if (element) element.textContent = text;
+  }
+
+  function setProgress(percent, message) {
+    const value = Math.max(0, Math.min(100, Number(percent) || 0));
+
+    const bar = $("progressBar");
+
+    if (bar) {
+      bar.style.width = `${value}%`;
+    }
+
+    setText("progressPercent", `${Math.round(value)}%`);
+
+    if (message) {
+      setText("processingText", message);
+    }
+  }
+
+  function showSection(id) {
+    const sections = [
+      "previewSection",
+      "processingSection",
+      "resultSection"
+    ];
+
+    sections.forEach(sectionId => {
+      const element = $(sectionId);
+      if (!element) return;
+
+      element.classList.toggle(
+        "hidden",
+        sectionId !== id
+      );
+    });
+  }
+
+  function resetPreview() {
+    const preview = $("mediaPreview");
+
+    if (preview) {
+      preview.innerHTML = "";
+    }
+
+    setText("fileName", "");
+  }
+
+  function resetResult() {
+    const resultPreview = $("resultPreview");
+
+    if (resultPreview) {
+      resultPreview.innerHTML = "";
+    }
+
+    setText("resultQuality", "");
+  }
+
+  function updateUploadText() {
+    const title = $("uploadTitle");
+    const description = $("uploadDescription");
+    const limit = $("uploadLimit");
+
+    if (state.mode === "video") {
+      if (title) title.textContent = "Upload your video";
+      if (description) {
+        description.textContent =
+          "Choose a video to enhance with FIDELIS.";
+      }
+
+      if (limit) {
+        limit.textContent = "MP4, MOV, WEBM";
+      }
+
+      return;
+    }
+
+    if (title) title.textContent = "Upload your photo";
+
+    if (description) {
+      description.textContent =
+        "Drag & drop or choose an image.";
+    }
+
+    if (limit) {
+      limit.textContent =
+        "JPG, JPEG, PNG • Max 20 MB";
+    }
+  }
+
+  function updateModeButtons() {
+    const photo = $("photoMode");
+    const video = $("videoMode");
+
+    if (photo) {
+      photo.classList.toggle(
+        "active",
+        state.mode === "photo"
+      );
+    }
+
+    if (video) {
+      video.classList.toggle(
+        "active",
+        state.mode === "video"
+      );
+    }
+
+    const input = $("fileInput");
+
+    if (input) {
+      input.value = "";
+
+      input.accept =
+        state.mode === "photo"
+          ? "image/*"
+          : "video/*";
+    }
+
+    state.file = null;
+
+    resetPreview();
+    resetResult();
+
+    setHidden($("previewSection"), true);
+    setHidden($("processingSection"), true);
+    setHidden($("resultSection"), true);
+
+    updateUploadText();
+  }
+
+  function updateQualityButtons() {
+    document
+      .querySelectorAll(".quality-option")
+      .forEach(button => {
+        const quality =
+          button.dataset.quality || "standard";
+
+        button.classList.toggle(
+          "active",
+          quality === state.quality
+        );
+      });
+  }
+
+  function selectQuality(quality) {
+    const q = String(quality || "standard")
+      .toLowerCase();
+
+    if (
+      q !== "standard" &&
+      q !== "high" &&
+      q !== "ultra"
+    ) {
+      return;
+    }
 
     /*
-     * FIDELIS - Main Application Controller
-     * "Enhance. Don't Change."
+     * Ultra hanya untuk VVIP.
+     * Kalau tier manager tersedia, gunakan pengecekan.
      */
+    if (q === "ultra") {
+      let allowed = false;
 
-    let currentMode = "photo";
-    let selectedFile = null;
-    let selectedQuality = "standard";
+      try {
+        if (
+          window.FidelisTier &&
+          typeof window.FidelisTier.canUse ===
+            "function"
+        ) {
+          allowed =
+            window.FidelisTier.canUse("ultra");
+        }
+      } catch (error) {
+        console.warn(
+          "[FIDELIS] Tier check failed:",
+          error
+        );
+      }
 
-    let currentPreviewURL = null;
-    let enhancedURL = null;
-    let enhancedBlob = null;
+      /*
+       * Kalau tier manager belum tersedia,
+       * jangan blokir UI. Pipeline nanti yang
+       * menentukan apakah model ultra tersedia.
+       */
+      if (
+        window.FidelisTier &&
+        typeof window.FidelisTier.canUse ===
+          "function" &&
+        !allowed
+      ) {
+        openVipModal();
+        return;
+      }
+    }
 
-    const $ = (id) => document.getElementById(id);
+    state.quality = q;
 
-    const fileInput = $("fileInput");
-    const uploadBox = $("uploadBox");
-    const uploadButton = $("uploadButton");
-    const uploadTitle = $("uploadTitle");
-    const uploadDescription = $("uploadDescription");
-    const uploadLimit = $("uploadLimit");
+    updateQualityButtons();
+  }
 
-    const photoMode = $("photoMode");
-    const videoMode = $("videoMode");
+  function renderPreview(file) {
+    const container = $("mediaPreview");
 
-    const previewSection = $("previewSection");
-    const mediaPreview = $("mediaPreview");
-    const fileName = $("fileName");
-    const removeButton = $("removeButton");
+    if (!container) return;
 
-    const qualityOptions = document.querySelectorAll(".quality-option");
+    container.innerHTML = "";
+
+    if (file.type.startsWith("image/")) {
+      const img = document.createElement("img");
+
+      img.alt = "FIDELIS preview";
+      img.style.maxWidth = "100%";
+      img.style.display = "block";
+
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+
+      container.appendChild(img);
+
+      return;
+    }
+
+    if (file.type.startsWith("video/")) {
+      const video =
+        document.createElement("video");
+
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.style.maxWidth = "100%";
+      video.src = URL.createObjectURL(file);
+
+      container.appendChild(video);
+    }
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+
+    const isImage =
+      file.type &&
+      file.type.startsWith("image/");
+
+    const isVideo =
+      file.type &&
+      file.type.startsWith("video/");
+
+    if (state.mode === "photo" && !isImage) {
+      notify(
+        "Mode Photo hanya menerima gambar.",
+        "error"
+      );
+      return;
+    }
+
+    if (state.mode === "video" && !isVideo) {
+      notify(
+        "Mode Video hanya menerima video.",
+        "error"
+      );
+      return;
+    }
+
+    if (isImage && file.size > 20 * 1024 * 1024) {
+      notify(
+        "Ukuran gambar maksimal 20 MB.",
+        "error"
+      );
+      return;
+    }
+
+    state.file = file;
+
+    setText("fileName", file.name);
+
+    renderPreview(file);
+
+    setHidden($("previewSection"), false);
+    setHidden($("processingSection"), true);
+    setHidden($("resultSection"), true);
+
+    resetResult();
+
+    notify("File berhasil dimuat.", "success");
+  }
+
+  async function enhance() {
+    if (state.busy) return;
+
+    if (!state.file) {
+      notify(
+        "Upload file terlebih dahulu.",
+        "error"
+      );
+      return;
+    }
+
+    state.busy = true;
+
     const enhanceButton = $("enhanceButton");
 
-    const processingSection = $("processingSection");
-    const progressBar = $("progressBar");
-    const progressPercent = $("progressPercent");
-    const processingText = $("processingText");
-
-    const resultSection = $("resultSection");
-    const resultPreview = $("resultPreview");
-    const resultQuality = $("resultQuality");
-    const downloadButton = $("downloadButton");
-    const newFileButton = $("newFileButton");
-
-    const vipButton = $("vipButton");
-    const upgradeButton = $("upgradeButton");
-
-    const vipModal = $("vipModal");
-    const modalOverlay = $("modalOverlay");
-    const modalClose = $("modalClose");
-
-    /*
-     * =========================
-     * INITIALIZATION
-     * =========================
-     */
-
-    function init() {
-        loadSettings();
-        setupEvents();
-        updateModeUI();
-        updateQualityUI();
-        updateUploadUI();
-
-        if (window.FidelisNotify) {
-            FidelisNotify.info("FIDELIS siap digunakan.");
-        }
+    if (enhanceButton) {
+      enhanceButton.disabled = true;
+      enhanceButton.textContent =
+        "Enhancing...";
     }
 
-    function loadSettings() {
-        if (!window.FidelisStorage) return;
-
-        const settings = FidelisStorage.getSettings();
-
-        if (settings.quality) {
-            selectedQuality = settings.quality;
-        }
-
-        if (window.FidelisTier) {
-            FidelisTier.load();
-        }
-    }
-
-    /*
-     * =========================
-     * EVENTS
-     * =========================
-     */
-
-    function setupEvents() {
-
-        // Upload button
-        if (uploadButton) {
-            uploadButton.addEventListener("click", function (event) {
-                event.stopPropagation();
-
-                if (fileInput) {
-                    fileInput.click();
-                }
-            });
-        }
-
-        // Upload box
-        if (uploadBox) {
-
-            uploadBox.addEventListener("click", function () {
-                if (fileInput) {
-                    fileInput.click();
-                }
-            });
-
-            uploadBox.addEventListener("dragover", function (event) {
-                event.preventDefault();
-                uploadBox.classList.add("dragging");
-            });
-
-            uploadBox.addEventListener("dragleave", function () {
-                uploadBox.classList.remove("dragging");
-            });
-
-            uploadBox.addEventListener("drop", function (event) {
-                event.preventDefault();
-
-                uploadBox.classList.remove("dragging");
-
-                const files = event.dataTransfer.files;
-
-                if (files && files.length > 0) {
-                    handleFile(files[0]);
-                }
-            });
-        }
-
-        // File input
-        if (fileInput) {
-            fileInput.addEventListener("change", function () {
-
-                if (!fileInput.files || !fileInput.files.length) {
-                    return;
-                }
-
-                handleFile(fileInput.files[0]);
-            });
-        }
-
-        // Mode buttons
-        if (photoMode) {
-            photoMode.addEventListener("click", function () {
-                setMode("photo");
-            });
-        }
-
-        if (videoMode) {
-            videoMode.addEventListener("click", function () {
-                setMode("video");
-            });
-        }
-
-        // Quality
-        qualityOptions.forEach(function (option) {
-
-            option.addEventListener("click", function () {
-
-                const quality = option.dataset.quality;
-
-                if (!quality) return;
-
-                selectQuality(quality);
-            });
-        });
-
-        // Enhance
-        if (enhanceButton) {
-            enhanceButton.addEventListener("click", startEnhancement);
-        }
-
-        // Remove
-        if (removeButton) {
-            removeButton.addEventListener("click", resetFile);
-        }
-
-        // Download
-        if (downloadButton) {
-            downloadButton.addEventListener("click", downloadResult);
-        }
-
-        // New file
-        if (newFileButton) {
-            newFileButton.addEventListener("click", resetAll);
-        }
-
-        // VVIP
-        if (vipButton) {
-            vipButton.addEventListener("click", openVIPModal);
-        }
-
-        if (upgradeButton) {
-            upgradeButton.addEventListener("click", openVIPModal);
-        }
-
-        if (modalClose) {
-            modalClose.addEventListener("click", closeVIPModal);
-        }
-
-        if (modalOverlay) {
-            modalOverlay.addEventListener("click", function (event) {
-
-                if (event.target === modalOverlay) {
-                    closeVIPModal();
-                }
-
-            });
-        }
-    }
-
-    /*
-     * =========================
-     * MODE
-     * =========================
-     */
-
-    function setMode(mode) {
-
-        if (mode !== "photo" && mode !== "video") {
-            return;
-        }
-
-        currentMode = mode;
-
-        updateModeUI();
-        updateUploadUI();
-
-        if (selectedFile) {
-            resetFile();
-        }
-    }
-
-    function updateModeUI() {
-
-        if (photoMode) {
-            photoMode.classList.toggle(
-                "active",
-                currentMode === "photo"
-            );
-        }
-
-        if (videoMode) {
-            videoMode.classList.toggle(
-                "active",
-                currentMode === "video"
-            );
-        }
-    }
-
-    function updateUploadUI() {
-
-        if (currentMode === "photo") {
-
-            if (uploadTitle) {
-                uploadTitle.textContent = "Upload your photo";
-            }
-
-            if (uploadDescription) {
-                uploadDescription.textContent =
-                    "JPG, JPEG, PNG, WEBP";
-            }
-
-            if (uploadLimit) {
-                uploadLimit.textContent =
-                    "Maximum 20 MB";
-            }
-
-        } else {
-
-            if (uploadTitle) {
-                uploadTitle.textContent = "Upload your video";
-            }
-
-            if (uploadDescription) {
-                uploadDescription.textContent =
-                    "MP4, WEBM, MOV";
-            }
-
-            if (uploadLimit) {
-                uploadLimit.textContent =
-                    "Maximum 200 MB";
-            }
-        }
-    }
-
-    /*
-     * =========================
-     * QUALITY
-     * =========================
-     */
-
-    function selectQuality(quality) {
-
-        if (!["standard", "high", "ultra"].includes(quality)) {
-            return;
-        }
-
-        // Check VVIP
-        if (
-            quality === "ultra" &&
-            window.FidelisTier &&
-            !FidelisTier.canUse("ultra")
-        ) {
-
-            showNotification(
-                "Ultra AI hanya tersedia untuk FIDELIS VVIP.",
-                "warning"
-            );
-
-            openVIPModal();
-            return;
-        }
-
-        selectedQuality = quality;
-
-        updateQualityUI();
-
-        if (window.FidelisStorage) {
-            FidelisStorage.saveSettings({
-                quality: selectedQuality
-            });
-        }
-    }
-
-    function updateQualityUI() {
-
-        qualityOptions.forEach(function (option) {
-
-            const quality = option.dataset.quality;
-
-            option.classList.toggle(
-                "active",
-                quality === selectedQuality
-            );
-        });
-    }
-
-    /*
-     * =========================
-     * FILE HANDLING
-     * =========================
-     */
-
-    function handleFile(file) {
-
-        if (!file) return;
-
-        const validation = validateFile(file);
-
-        if (!validation.valid) {
-
-            showNotification(
-                validation.message,
-                "error"
-            );
-
-            return;
-        }
-
-        selectedFile = file;
-
-        createPreview(file);
-
-        if (previewSection) {
-            previewSection.classList.remove("hidden");
-        }
-
-        if (enhanceButton) {
-            enhanceButton.disabled = false;
-        }
-
-        if (resultSection) {
-            resultSection.classList.add("hidden");
-        }
-
-        showNotification(
-            "File berhasil dimuat.",
-            "success"
+    setHidden($("previewSection"), true);
+    setHidden($("resultSection"), true);
+    setHidden($("processingSection"), false);
+
+    setProgress(
+      0,
+      "Memulai FIDELIS..."
+    );
+
+    try {
+      if (
+        !window.FidelisProcessing ||
+        typeof window.FidelisProcessing.process !==
+          "function"
+      ) {
+        throw new Error(
+          "Processing Engine belum tersedia."
         );
-    }
+      }
 
-    function validateFile(file) {
+      const result =
+        await window.FidelisProcessing.process(
+          state.file,
+          {
+            quality: state.quality,
 
-        if (currentMode === "photo") {
+            onProgress: event => {
+              if (!event) return;
 
-            if (!file.type.startsWith("image/")) {
-
-                return {
-                    valid: false,
-                    message: "File harus berupa gambar."
-                };
+              setProgress(
+                event.progress,
+                event.message
+              );
             }
-
-            const maxSize = 20 * 1024 * 1024;
-
-            if (file.size > maxSize) {
-
-                return {
-                    valid: false,
-                    message: "Ukuran foto maksimal 20 MB."
-                };
-            }
-
-        } else {
-
-            if (!file.type.startsWith("video/")) {
-
-                return {
-                    valid: false,
-                    message: "File harus berupa video."
-                };
-            }
-
-            const maxSize = 200 * 1024 * 1024;
-
-            if (file.size > maxSize) {
-
-                return {
-                    valid: false,
-                    message: "Ukuran video maksimal 200 MB."
-                };
-            }
-        }
-
-        return {
-            valid: true
-        };
-    }
-
-    /*
-     * =========================
-     * PREVIEW
-     * =========================
-     */
-
-    function createPreview(file) {
-
-        cleanupPreviewURL();
-
-        currentPreviewURL = URL.createObjectURL(file);
-
-        if (!mediaPreview) return;
-
-        mediaPreview.innerHTML = "";
-
-        if (currentMode === "photo") {
-
-            const img = document.createElement("img");
-
-            img.src = currentPreviewURL;
-            img.alt = "FIDELIS preview";
-
-            mediaPreview.appendChild(img);
-
-        } else {
-
-            const video = document.createElement("video");
-
-            video.src = currentPreviewURL;
-            video.controls = true;
-            video.playsInline = true;
-
-            mediaPreview.appendChild(video);
-        }
-
-        if (fileName) {
-            fileName.textContent = file.name;
-        }
-    }
-
-    /*
-     * =========================
-     * ENHANCEMENT
-     * =========================
-     */
-
-    async function startEnhancement() {
-
-        if (!selectedFile) {
-
-            showNotification(
-                "Upload file terlebih dahulu.",
-                "warning"
-            );
-
-            return;
-        }
-
-        if (
-            window.FidelisProcessing &&
-            FidelisProcessing.getStatus().running
-        ) {
-
-            showNotification(
-                "Masih ada proses yang berjalan.",
-                "warning"
-            );
-
-            return;
-        }
-
-        // VVIP protection
-        if (
-            selectedQuality === "ultra" &&
-            window.FidelisTier &&
-            !FidelisTier.canUse("ultra")
-        ) {
-
-            showNotification(
-                "Ultra AI membutuhkan FIDELIS VVIP.",
-                "warning"
-            );
-
-            openVIPModal();
-            return;
-        }
-
-        showProcessing();
-
-        try {
-
-            let result;
-
-            if (window.FidelisProcessing) {
-
-                result = await FidelisProcessing.process({
-                    file: selectedFile,
-                    mode: currentMode,
-                    quality: selectedQuality,
-                    onProgress: updateProgress
-                });
-
-            } else {
-
-                result = await fallbackProcessing();
-            }
-
-            if (!result || !result.blob) {
-                throw new Error(
-                    "Processing menghasilkan output kosong."
-                );
-            }
-
-            enhancedBlob = result.blob;
-
-            if (enhancedURL) {
-                URL.revokeObjectURL(enhancedURL);
-            }
-
-            enhancedURL = URL.createObjectURL(
-                enhancedBlob
-            );
-
-            showResult(result);
-
-            showNotification(
-                "Enhancement selesai.",
-                "success"
-            );
-
-        } catch (error) {
-
-            console.error(
-                "FIDELIS processing error:",
-                error
-            );
-
-            showNotification(
-                error.message ||
-                "Terjadi kesalahan saat enhancement.",
-                "error"
-            );
-
-        } finally {
-
-            hideProcessing();
-        }
-    }
-
-    async function fallbackProcessing() {
-
-        if (currentMode === "photo") {
-
-            if (
-                selectedQuality === "ultra" &&
-                window.FidelisImageAI
-            ) {
-
-                return await FidelisImageAI.enhance(
-                    selectedFile,
-                    selectedQuality,
-                    updateProgress
-                );
-            }
-
-            return await FidelisImage.enhance(
-                selectedFile,
-                selectedQuality
-            );
-        }
-
-        return await FidelisVideo.enhance(
-            selectedFile,
-            selectedQuality,
-            updateProgress
-        );
-    }
-
-    /*
-     * =========================
-     * PROGRESS
-     * =========================
-     */
-
-    function showProcessing() {
-
-        if (processingSection) {
-            processingSection.classList.remove("hidden");
-        }
-
-        if (enhanceButton) {
-            enhanceButton.disabled = true;
-        }
-
-        updateProgress(0);
-        setProcessingText("Preparing enhancement...");
-    }
-
-    function hideProcessing() {
-
-        if (processingSection) {
-            processingSection.classList.add("hidden");
-        }
-
-        if (enhanceButton) {
-            enhanceButton.disabled = false;
-        }
-    }
-
-    function updateProgress(value) {
-
-        let progress = Number(value);
-
-        if (!Number.isFinite(progress)) {
-            progress = 0;
-        }
-
-        progress = Math.max(
-            0,
-            Math.min(100, progress)
+          }
         );
 
-        if (progressBar) {
+      if (!result) {
+        throw new Error(
+          "Tidak ada hasil dari processing engine."
+        );
+      }
 
-            progressBar.style.width =
-                progress + "%";
-        }
+      if (
+        state.mode === "photo" &&
+        result.aiProcessed !== true
+      ) {
+        throw new Error(
+          "Hasil tidak berasal dari AI."
+        );
+      }
 
-        if (progressPercent) {
+      if (
+        state.mode === "photo" &&
+        result.fallback === true
+      ) {
+        throw new Error(
+          "AI fallback terdeteksi. Hasil dibatalkan."
+        );
+      }
 
-            progressPercent.textContent =
-                Math.round(progress) + "%";
-        }
+      state.result = result;
 
-        if (progress >= 100) {
+      showResult(result);
 
-            setProcessingText(
-                "Finalizing enhanced file..."
-            );
+      notify(
+        "Enhancement berhasil.",
+        "success"
+      );
+    } catch (error) {
+      console.error(
+        "[FIDELIS] Enhancement error:",
+        error
+      );
 
-        } else if (progress >= 75) {
+      setHidden(
+        $("processingSection"),
+        true
+      );
 
-            setProcessingText(
-                "Optimizing details..."
-            );
+      setHidden(
+        $("previewSection"),
+        false
+      );
 
-        } else if (progress >= 40) {
+      notify(
+        error?.message ||
+          "Enhancement gagal.",
+        "error"
+      );
+    } finally {
+      state.busy = false;
 
-            setProcessingText(
-                "Enhancing image quality..."
-            );
+      if (enhanceButton) {
+        enhanceButton.disabled = false;
+        enhanceButton.textContent =
+          "Enhance";
+      }
+    }
+  }
 
-        } else {
+  function showResult(result) {
+    const container = $("resultPreview");
 
-            setProcessingText(
-                "Processing..."
-            );
-        }
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (result.canvas) {
+      const canvas = result.canvas;
+
+      canvas.style.maxWidth = "100%";
+      canvas.style.height = "auto";
+      canvas.style.display = "block";
+
+      container.appendChild(canvas);
+    } else if (result.url) {
+      const img = document.createElement("img");
+
+      img.src = result.url;
+      img.alt = "FIDELIS result";
+      img.style.maxWidth = "100%";
+
+      container.appendChild(img);
     }
 
-    function setProcessingText(text) {
+    let label =
+      result.quality || state.quality;
 
-        if (processingText) {
-            processingText.textContent = text;
-        }
+    if (result.scale) {
+      label += ` • ${result.scale}×`;
     }
 
-    /*
-     * =========================
-     * RESULT
-     * =========================
-     */
-
-    function showResult(result) {
-
-        if (!resultSection || !resultPreview) {
-            return;
-        }
-
-        resultSection.classList.remove("hidden");
-
-        resultPreview.innerHTML = "";
-
-        if (currentMode === "photo") {
-
-            const img = document.createElement("img");
-
-            img.src = enhancedURL;
-            img.alt = "FIDELIS enhanced result";
-
-            resultPreview.appendChild(img);
-
-        } else {
-
-            const video = document.createElement("video");
-
-            video.src = enhancedURL;
-            video.controls = true;
-            video.playsInline = true;
-
-            resultPreview.appendChild(video);
-        }
-
-        if (resultQuality) {
-
-            let qualityName =
-                selectedQuality;
-
-            if (selectedQuality === "ultra") {
-                qualityName = "Ultra AI VVIP";
-            } else if (selectedQuality === "high") {
-                qualityName = "High";
-            } else {
-                qualityName = "Standard";
-            }
-
-            resultQuality.textContent =
-                qualityName;
-        }
-
-        resultSection.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+    if (result.backend) {
+      label += ` • ${result.backend}`;
     }
 
-    /*
-     * =========================
-     * DOWNLOAD
-     * =========================
-     */
+    setText(
+      "resultQuality",
+      label.toUpperCase()
+    );
 
-    function downloadResult() {
+    setProgress(
+      100,
+      "Enhancement selesai."
+    );
 
-        if (!enhancedBlob) {
+    setHidden(
+      $("processingSection"),
+      true
+    );
 
-            showNotification(
-                "Belum ada hasil enhancement.",
-                "warning"
-            );
+    setHidden(
+      $("previewSection"),
+      true
+    );
 
-            return;
+    setHidden(
+      $("resultSection"),
+      false
+    );
+  }
+
+  function downloadResult() {
+    const result = state.result;
+
+    if (!result) {
+      notify(
+        "Belum ada hasil untuk di-download.",
+        "error"
+      );
+      return;
+    }
+
+    if (result.blob) {
+      const url =
+        URL.createObjectURL(result.blob);
+
+      const link =
+        document.createElement("a");
+
+      link.href = url;
+
+      const originalName =
+        state.file?.name ||
+        "fidelis-image.jpg";
+
+      const cleanName =
+        originalName.replace(
+          /\.[^/.]+$/,
+          ""
+        );
+
+      link.download =
+        `${cleanName}-fidelis.jpg`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      return;
+    }
+
+    if (result.canvas) {
+      result.canvas.toBlob(blob => {
+        if (!blob) {
+          notify(
+            "Gagal membuat file download.",
+            "error"
+          );
+          return;
         }
 
-        const extension =
-            currentMode === "photo"
-                ? "jpg"
-                : "webm";
-
-        const originalName =
-            selectedFile
-                ? selectedFile.name
-                : "fidelis";
-
-        const cleanName =
-            originalName
-                .replace(/\.[^/.]+$/, "");
-
-        const filename =
-            cleanName +
-            "_fidelis." +
-            extension;
+        const url =
+          URL.createObjectURL(blob);
 
         const link =
-            document.createElement("a");
+          document.createElement("a");
 
-        link.href = enhancedURL;
-        link.download = filename;
+        link.href = url;
+
+        link.download =
+          "fidelis-enhanced.jpg";
 
         document.body.appendChild(link);
 
@@ -811,116 +583,327 @@
 
         link.remove();
 
-        if (window.FidelisNotify) {
-            FidelisNotify.success(
-                "File berhasil disiapkan untuk download."
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }, "image/jpeg", 0.96);
+
+      return;
+    }
+
+    notify(
+      "Format hasil tidak dapat di-download.",
+      "error"
+    );
+  }
+
+  function newFile() {
+    state.file = null;
+    state.result = null;
+    state.busy = false;
+
+    resetPreview();
+    resetResult();
+
+    const input = $("fileInput");
+
+    if (input) {
+      input.value = "";
+    }
+
+    setHidden(
+      $("previewSection"),
+      true
+    );
+
+    setHidden(
+      $("processingSection"),
+      true
+    );
+
+    setHidden(
+      $("resultSection"),
+      true
+    );
+
+    updateUploadText();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }
+
+  function openVipModal() {
+    const modal = $("vipModal");
+
+    if (!modal) return;
+
+    modal.classList.remove("hidden");
+  }
+
+  function closeVipModal() {
+    const modal = $("vipModal");
+
+    if (!modal) return;
+
+    modal.classList.add("hidden");
+  }
+
+  function setup() {
+    console.log(
+      "🔥 FIDELIS App Controller starting..."
+    );
+
+    const photoMode = $("photoMode");
+    const videoMode = $("videoMode");
+
+    if (photoMode) {
+      photoMode.addEventListener(
+        "click",
+        () => {
+          state.mode = "photo";
+          updateModeButtons();
+        }
+      );
+    }
+
+    if (videoMode) {
+      videoMode.addEventListener(
+        "click",
+        () => {
+          state.mode = "video";
+          updateModeButtons();
+        }
+      );
+    }
+
+    const uploadButton = $("uploadButton");
+    const fileInput = $("fileInput");
+    const uploadBox = $("uploadBox");
+
+    if (uploadButton && fileInput) {
+      uploadButton.addEventListener(
+        "click",
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          fileInput.click();
+        }
+      );
+    }
+
+    if (uploadBox && fileInput) {
+      uploadBox.addEventListener(
+        "click",
+        event => {
+          /*
+           * Jangan trigger dua kali kalau user
+           * mengklik tombol Upload yang sudah
+           * memanggil fileInput.click().
+           */
+          if (
+            event.target.closest(
+              "#uploadButton"
+            )
+          ) {
+            return;
+          }
+
+          fileInput.click();
+        }
+      );
+
+      uploadBox.addEventListener(
+        "dragover",
+        event => {
+          event.preventDefault();
+
+          uploadBox.classList.add(
+            "dragging"
+          );
+        }
+      );
+
+      uploadBox.addEventListener(
+        "dragleave",
+        () => {
+          uploadBox.classList.remove(
+            "dragging"
+          );
+        }
+      );
+
+      uploadBox.addEventListener(
+        "drop",
+        event => {
+          event.preventDefault();
+
+          uploadBox.classList.remove(
+            "dragging"
+          );
+
+          const file =
+            event.dataTransfer.files?.[0];
+
+          handleFile(file);
+        }
+      );
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener(
+        "change",
+        event => {
+          const file =
+            event.target.files?.[0];
+
+          handleFile(file);
+        }
+      );
+    }
+
+    document
+      .querySelectorAll(".quality-option")
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => {
+            selectQuality(
+              button.dataset.quality
             );
-        }
+          }
+        );
+      });
+
+    const enhanceButton =
+      $("enhanceButton");
+
+    if (enhanceButton) {
+      enhanceButton.addEventListener(
+        "click",
+        enhance
+      );
     }
 
-    /*
-     * =========================
-     * RESET
-     * =========================
-     */
+    const removeButton =
+      $("removeButton");
 
-    function resetFile() {
-
-        selectedFile = null;
-
-        cleanupPreviewURL();
-
-        if (fileInput) {
-            fileInput.value = "";
-        }
-
-        if (previewSection) {
-            previewSection.classList.add("hidden");
-        }
-
-        if (mediaPreview) {
-            mediaPreview.innerHTML = "";
-        }
-
-        if (fileName) {
-            fileName.textContent = "";
-        }
-
-        if (enhanceButton) {
-            enhanceButton.disabled = true;
-        }
+    if (removeButton) {
+      removeButton.addEventListener(
+        "click",
+        newFile
+      );
     }
 
-    function resetAll() {
+    const downloadButton =
+      $("downloadButton");
 
-        resetFile();
+    if (downloadButton) {
+      downloadButton.addEventListener(
+        "click",
+        downloadResult
+      );
+    }
 
-        if (enhancedURL) {
-            URL.revokeObjectURL(enhancedURL);
-            enhancedURL = null;
-        }
+    const newFileButton =
+      $("newFileButton");
 
-        enhancedBlob = null;
+    if (newFileButton) {
+      newFileButton.addEventListener(
+        "click",
+        newFile
+      );
+    }
 
-        if (resultPreview) {
-            resultPreview.innerHTML = "";
-        }
+    const vipButton =
+      $("vipButton");
 
-        if (resultSection) {
-            resultSection.classList.add("hidden");
-        }
+    if (vipButton) {
+      vipButton.addEventListener(
+        "click",
+        openVipModal
+      );
+    }
 
-        updateProgress(0);
+    const upgradeButton =
+      $("upgradeButton");
 
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
+    if (upgradeButton) {
+      upgradeButton.addEventListener(
+        "click",
+        openVipModal
+      );
+    }
 
-        showNotification(
-            "FIDELIS siap untuk file baru.",
+    const modalClose =
+      $("modalClose");
+
+    if (modalClose) {
+      modalClose.addEventListener(
+        "click",
+        closeVipModal
+      );
+    }
+
+    const modalOverlay =
+      $("modalOverlay");
+
+    if (modalOverlay) {
+      modalOverlay.addEventListener(
+        "click",
+        closeVipModal
+      );
+    }
+
+    const upgradeModalButton =
+      $("upgradeModalButton");
+
+    if (upgradeModalButton) {
+      upgradeModalButton.addEventListener(
+        "click",
+        () => {
+          notify(
+            "VVIP system belum terhubung.",
             "info"
-        );
+          );
+        }
+      );
     }
 
-    /*
-     * =========================
-     * VVIP MODAL
-     * =========================
-     */
+    updateModeButtons();
+    updateQualityButtons();
 
-    function openVIPModal() {
+    console.log(
+      "✅ FIDELIS App Controller ready"
+    );
+  }
 
-        if (!vipModal) return;
+  /*
+   * Tunggu DOM agar script tetap aman
+   * meskipun posisi script berubah.
+   */
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      setup
+    );
+  } else {
+    setup();
+  }
 
-        vipModal.classList.remove("hidden");
+  window.FidelisApp = {
+    getState: () => ({
+      ...state
+    }),
 
-        document.body.classList.add(
-            "modal-open"
-        );
-    }
+    enhance,
 
-    function closeVIPModal() {
+    newFile,
 
-        if (!vipModal) return;
+    openVipModal,
 
-        vipModal.classList.add("hidden");
-
-        document.body.classList.remove(
-            "modal-open"
-        );
-    }
-
-    /*
-     * =========================
-     * NOTIFICATIONS
-     * =========================
-     */
-
-    function showNotification(
-        message,
-        type = "info"
-    ) {
-
-        if (window.FidelisNotify) {
-                   
+    closeVipModal
+  };
+})();
