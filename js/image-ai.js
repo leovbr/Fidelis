@@ -1,622 +1,335 @@
 /* =========================================================
    FIDELIS IMAGE AI
-   Main image enhancement controller
+   Real AI Image Enhancement Entry Point
    ========================================================= */
 
 (function () {
-
   "use strict";
 
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
-  const ImageAI = {
+  function normalizeQuality(quality) {
+    const q = String(quality || "standard").toLowerCase();
 
+    if (q === "high") return "high";
+    if (q === "ultra") return "ultra";
 
-    /* =====================================================
-       VALIDATE
-       ===================================================== */
+    return "standard";
+  }
 
-    validateFile(file) {
+  function validateFile(file) {
+    if (!file) {
+      throw new Error("Tidak ada file gambar.");
+    }
 
-      if (!file) {
+    if (!(file instanceof File)) {
+      throw new Error("File gambar tidak valid.");
+    }
 
-        throw new Error(
-          "No image selected."
-        );
+    if (!file.type || !file.type.startsWith("image/")) {
+      throw new Error("File harus berupa gambar.");
+    }
 
-      }
+    if (file.size <= 0) {
+      throw new Error("File gambar kosong.");
+    }
 
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("Ukuran gambar terlalu besar. Maksimal 20 MB.");
+    }
 
-      if (
-        !file.type ||
-        !file.type.startsWith("image/")
-      ) {
+    return true;
+  }
 
-        throw new Error(
-          "Please select a valid image."
-        );
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
 
-      }
+      img.onload = () => {
+        URL.revokeObjectURL(url);
 
-
-      const maxSize =
-        20 * 1024 * 1024;
-
-
-      if (file.size > maxSize) {
-
-        throw new Error(
-          "Image is too large. Maximum size is 20MB."
-        );
-
-      }
-
-
-      return true;
-
-    },
-
-
-    /* =====================================================
-       LOAD IMAGE
-       ===================================================== */
-
-    loadImage(source) {
-
-      return new Promise(
-        (resolve, reject) => {
-
-          const image =
-            new Image();
-
-
-          image.onload = function () {
-
-            resolve(image);
-
-          };
-
-
-          image.onerror = function () {
-
-            reject(
-              new Error(
-                "Failed to decode image."
-              )
-            );
-
-          };
-
-
-          if (
-            source instanceof Blob ||
-            source instanceof File
-          ) {
-
-            image.src =
-              URL.createObjectURL(source);
-
-          }
-
-          else if (
-            typeof source === "string"
-          ) {
-
-            image.src =
-              source;
-
-          }
-
-          else {
-
-            reject(
-              new Error(
-                "Unsupported image source."
-              )
-            );
-
-          }
-
-        }
-      );
-
-    },
-
-
-    /* =====================================================
-       PROGRESS
-       ===================================================== */
-
-    progress(callback, value, text) {
-
-      if (
-        typeof callback === "function"
-      ) {
-
-        callback(
-          Math.max(
-            0,
-            Math.min(
-              100,
-              value
-            )
-          ),
-          text || ""
-        );
-
-      }
-
-    },
-
-
-    /* =====================================================
-       ENHANCE
-       ===================================================== */
-
-    async enhance(source, quality = "standard", options = {}) {
-
-      const q =
-        this.normalizeQuality(quality);
-
-
-      const onProgress =
-        options.onProgress;
-
-
-      this.progress(
-        onProgress,
-        2,
-        "Checking image..."
-      );
-
-
-      /*
-       File validation.
-       */
-
-      if (
-        source instanceof File ||
-        source instanceof Blob
-      ) {
-
-        this.validateFile(source);
-
-      }
-
-
-      this.progress(
-        onProgress,
-        8,
-        "Loading image..."
-      );
-
-
-      /*
-       Load image if necessary.
-       */
-
-      let image =
-        source;
-
-
-      if (
-        source instanceof File ||
-        source instanceof Blob
-      ) {
-
-        image =
-          await this.loadImage(source);
-
-      }
-
-
-      if (
-        !image ||
-        !image.width ||
-        !image.height
-      ) {
-
-        throw new Error(
-          "Invalid image source."
-        );
-
-      }
-
-
-      this.progress(
-        onProgress,
-        15,
-        "Preparing identity protection..."
-      );
-
-
-      /*
-       Face Guard.
-       */
-
-      let guard = null;
-
-
-      if (
-        window.FidelisFaceGuard
-      ) {
-
-        try {
-
-          guard =
-            await window.FidelisFaceGuard.prepare(
-              image,
-              {
-                quality: q
-              }
-            );
-
-        } catch (error) {
-
-          console.warn(
-            "FIDELIS FaceGuard:",
-            error
-          );
-
+        if (!img.naturalWidth || !img.naturalHeight) {
+          reject(new Error("Gambar tidak memiliki dimensi yang valid."));
+          return;
         }
 
+        resolve(img);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Gagal membaca gambar."));
+      };
+
+      img.src = url;
+    });
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      if (!canvas) {
+        reject(new Error("Canvas hasil AI tidak tersedia."));
+        return;
       }
 
-
-      this.progress(
-        onProgress,
-        22,
-        "Checking AI model..."
-      );
-
-
-      /*
-       Make sure router exists.
-       */
-
-      if (
-        !window.FidelisPipelineRouter ||
-        typeof window.FidelisPipelineRouter.processImage !==
-        "function"
-      ) {
-
-        throw new Error(
-          "FIDELIS AI Pipeline is unavailable."
-        );
-
-      }
-
-
-      this.progress(
-        onProgress,
-        28,
-        "Preparing AI engine..."
-      );
-
-
-      /*
-       Real AI pipeline.
-       */
-
-      const result =
-        await window.FidelisPipelineRouter.processImage(
-          image,
-          q,
-          {
-
-            ...options,
-
-            onProgress: function (value, text) {
-
-              /*
-               Pipeline usually reports 0-100.
-               Map it into 28-92.
-               */
-
-              const mapped =
-                28 +
-                (
-                  Number(value || 0) *
-                  0.64
-                );
-
-
-              this.progress(
-                onProgress,
-                mapped,
-                text ||
-                "Running AI enhancement..."
-              );
-
-            }.bind(this)
-
+      canvas.toBlob(
+        blob => {
+          if (!blob) {
+            reject(new Error("Gagal membuat file hasil."));
+            return;
           }
-        );
 
-
-      if (
-        !result ||
-        !result.canvas
-      ) {
-
-        throw new Error(
-          "AI enhancement returned no image."
-        );
-
-      }
-
-
-      this.progress(
-        onProgress,
-        94,
-        "Finalizing result..."
+          resolve(blob);
+        },
+        type,
+        quality
       );
+    });
+  }
 
+  function ensureAIResult(result) {
+    if (!result) {
+      throw new Error("AI tidak menghasilkan hasil.");
+    }
 
-      /*
-       Identity protection finalization.
-       */
+    if (result.fallback === true) {
+      throw new Error(
+        "FIDELIS menolak fallback. Model AI tidak berhasil melakukan inference."
+      );
+    }
 
+    if (result.aiProcessed !== true) {
+      throw new Error(
+        "Gambar belum diproses oleh AI. Tidak ada hasil yang dikembalikan."
+      );
+    }
+
+    if (!result.canvas) {
+      throw new Error("Canvas hasil AI tidak tersedia.");
+    }
+
+    return result;
+  }
+
+  async function enhance(file, options = {}) {
+    validateFile(file);
+
+    const quality = normalizeQuality(options.quality);
+
+    if (
+      !window.FidelisPipelineRouter ||
+      typeof window.FidelisPipelineRouter.processImage !== "function"
+    ) {
+      throw new Error(
+        "AI Pipeline belum siap. Pastikan semua engine FIDELIS sudah dimuat."
+      );
+    }
+
+    const report =
+      typeof options.onProgress === "function"
+        ? options.onProgress
+        : () => {};
+
+    report({
+      stage: "loading",
+      progress: 5,
+      message: "Membaca gambar..."
+    });
+
+    const image = await loadImage(file);
+
+    report({
+      stage: "prepare",
+      progress: 12,
+      message: "Menyiapkan AI..."
+    });
+
+    /*
+     * FaceGuard hanya melakukan pemeriksaan konservatif.
+     * Ini BUKAN face recognition.
+     */
+    let guard = null;
+
+    try {
+      if (
+        window.FidelisFaceGuard &&
+        typeof window.FidelisFaceGuard.prepare === "function"
+      ) {
+        guard = await window.FidelisFaceGuard.prepare(image);
+      }
+    } catch (error) {
+      console.warn("[FIDELIS] FaceGuard prepare warning:", error);
+    }
+
+    report({
+      stage: "ai",
+      progress: 20,
+      message: "AI sedang meningkatkan detail..."
+    });
+
+    let result;
+
+    try {
+      result = await window.FidelisPipelineRouter.processImage(
+        image,
+        quality,
+        {
+          onProgress: event => {
+            if (!event) return;
+
+            let progress =
+              typeof event.progress === "number"
+                ? event.progress
+                : 20;
+
+            /*
+             * Pipeline progress biasanya berada di 0–100.
+             * Kita mapping ke UI FIDELIS 20–90%.
+             */
+            progress = 20 + progress * 0.7;
+
+            report({
+              stage: event.stage || "ai",
+              progress,
+              message:
+                event.message ||
+                "AI sedang memproses gambar..."
+            });
+          }
+        }
+      );
+    } catch (error) {
+      console.error("[FIDELIS] AI processing failed:", error);
+
+      throw new Error(
+        error?.message ||
+          "AI gagal memproses gambar. Silakan coba lagi."
+      );
+    }
+
+    ensureAIResult(result);
+
+    /*
+     * Finalize guard jika tersedia.
+     */
+    try {
       if (
         guard &&
         window.FidelisFaceGuard &&
-        typeof window.FidelisFaceGuard.finalize ===
-        "function"
+        typeof window.FidelisFaceGuard.finalize === "function"
       ) {
-
-        try {
-
-          await window.FidelisFaceGuard.finalize(
-            result.canvas,
-            guard
-          );
-
-        } catch (error) {
-
-          console.warn(
-            "FIDELIS FaceGuard finalize:",
-            error
-          );
-
-        }
-
-      }
-
-
-      this.progress(
-        onProgress,
-        98,
-        "Encoding result..."
-      );
-
-
-      /*
-       Convert canvas to Blob.
-       */
-
-      const blob =
-        await this.canvasToBlob(
-          result.canvas,
-          options.mimeType ||
-          "image/jpeg",
-          options.quality ||
-          0.96
+        await window.FidelisFaceGuard.finalize(
+          guard,
+          result.canvas
         );
-
-
-      this.progress(
-        onProgress,
-        100,
-        "Complete."
-      );
-
-
-      return {
-
-        blob,
-
-        canvas:
-          result.canvas,
-
-        width:
-          result.canvas.width,
-
-        height:
-          result.canvas.height,
-
-        quality:
-          q,
-
-        scale:
-          result.scale ||
-          1,
-
-        aiProcessed:
-          result.aiProcessed === true,
-
-        fallback:
-          result.fallback === true,
-
-        engine:
-          result.engine ||
-          "FIDELIS AI",
-
-        backend:
-          result.backend ||
-          "ONNX",
-
-        model:
-          result.model ||
-          null
-
-      };
-
-    },
-
-
-    /* =====================================================
-       NORMALIZE QUALITY
-       ===================================================== */
-
-    normalizeQuality(quality) {
-
-      if (
-        quality === "ultra" ||
-        quality === "vvip"
-      ) {
-
-        return "ultra";
-
       }
-
-
-      if (
-        quality === "high" ||
-        quality === "hq"
-      ) {
-
-        return "high";
-
-      }
-
-
-      return "standard";
-
-    },
-
-
-    /* =====================================================
-       CANVAS TO BLOB
-       ===================================================== */
-
-    canvasToBlob(
-      canvas,
-      type = "image/jpeg",
-      quality = 0.96
-    ) {
-
-      return new Promise(
-        (resolve, reject) => {
-
-          canvas.toBlob(
-            function (blob) {
-
-              if (!blob) {
-
-                reject(
-                  new Error(
-                    "Failed to encode enhanced image."
-                  )
-                );
-
-                return;
-
-              }
-
-
-              resolve(blob);
-
-            },
-            type,
-            quality
-          );
-
-        }
-      );
-
-    },
-
-
-    /* =====================================================
-       ENHANCE FILE
-       ===================================================== */
-
-    async enhanceFile(
-      file,
-      quality = "standard",
-      options = {}
-    ) {
-
-      return this.enhance(
-        file,
-        quality,
-        options
-      );
-
-    },
-
-
-    /* =====================================================
-       CHECK AI READY
-       ===================================================== */
-
-    async isReady(
-      quality = "standard"
-    ) {
-
-      const q =
-        this.normalizeQuality(quality);
-
-
-      if (
-        window.FidelisPipelineRouter &&
-        typeof window.FidelisPipelineRouter.isReady ===
-        "function"
-      ) {
-
-        return (
-          await window.FidelisPipelineRouter.isReady(q)
-        );
-
-      }
-
-
-      return false;
-
-    },
-
-
-    /* =====================================================
-       STATUS
-       ===================================================== */
-
-    getStatus(
-      quality = "standard"
-    ) {
-
-      const q =
-        this.normalizeQuality(quality);
-
-
-      if (
-        window.FidelisPipelineRouter &&
-        typeof window.FidelisPipelineRouter.getStatus ===
-        "function"
-      ) {
-
-        return (
-          window.FidelisPipelineRouter.getStatus(q)
-        );
-
-      }
-
-
-      return {
-
-        quality: q,
-
-        ready: false,
-
-        reason:
-          "Pipeline unavailable."
-
-      };
-
+    } catch (error) {
+      console.warn("[FIDELIS] FaceGuard finalize warning:", error);
     }
 
+    report({
+      stage: "export",
+      progress: 92,
+      message: "Menyiapkan hasil..."
+    });
+
+    /*
+     * Gunakan JPEG berkualitas tinggi.
+     * Hasil tetap berasal dari canvas inference AI.
+     */
+    const blob = await canvasToBlob(
+      result.canvas,
+      "image/jpeg",
+      0.96
+    );
+
+    if (!blob || blob.size <= 0) {
+      throw new Error("Hasil AI kosong.");
+    }
+
+    report({
+      stage: "complete",
+      progress: 100,
+      message: "Enhancement selesai."
+    });
+
+    return {
+      blob,
+
+      canvas: result.canvas,
+
+      width: result.width || result.canvas.width,
+      height: result.height || result.canvas.height,
+
+      originalWidth:
+        result.originalWidth || image.naturalWidth,
+
+      originalHeight:
+        result.originalHeight || image.naturalHeight,
+
+      inputWidth: result.inputWidth,
+      inputHeight: result.inputHeight,
+
+      scale: result.scale || 2,
+
+      quality,
+
+      model: result.model || null,
+
+      engine: result.engine || "Real-ESRGAN",
+
+      backend: result.backend || "unknown",
+
+      inputShape: result.inputShape || null,
+      outputShape: result.outputShape || null,
+
+      inferenceTime:
+        typeof result.inferenceTime === "number"
+          ? result.inferenceTime
+          : null,
+
+      aiProcessed: true,
+      fallback: false
+    };
+  }
+
+  function isReady(quality = "standard") {
+    if (
+      !window.FidelisPipelineRouter ||
+      typeof window.FidelisPipelineRouter.isReady !== "function"
+    ) {
+      return false;
+    }
+
+    return window.FidelisPipelineRouter.isReady(
+      normalizeQuality(quality)
+    );
+  }
+
+  function getStatus(quality = "standard") {
+    if (
+      window.FidelisPipelineRouter &&
+      typeof window.FidelisPipelineRouter.getStatus === "function"
+    ) {
+      return window.FidelisPipelineRouter.getStatus(
+        normalizeQuality(quality)
+      );
+    }
+
+    return {
+      ready: false,
+      quality: normalizeQuality(quality),
+      error: "Pipeline router belum tersedia."
+    };
+  }
+
+  window.FidelisImageAI = {
+    enhance,
+    isReady,
+    getStatus,
+    validateFile
   };
 
-
-  window.FidelisImageAI = ImageAI;
-
-
+  console.log("🔥 FIDELIS Image AI ready");
 })();
