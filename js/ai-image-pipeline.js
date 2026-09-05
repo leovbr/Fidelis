@@ -1,612 +1,888 @@
 (function () {
   "use strict";
 
-  const state = {
-    processing: false,
-    currentQuality: null,
-    error: null
-  };
+  const sessions = new Map();
+  const loading = new Map();
 
   function normalizeQuality(quality) {
-    const q = String(quality || "standard").toLowerCase();
+    const q = String(
+      quality || "standard"
+    ).toLowerCase();
 
-    if (q === "ultra" || q === "vvip") return "ultra";
-    if (q === "high" || q === "hq" || q === "premium") return "high";
-
-    return "standard";
-  }
-
-  function report(options, progress, text) {
-    const value = Math.max(0, Math.min(100, Math.round(progress)));
-
-    if (typeof options.onProgress === "function") {
-      try {
-        options.onProgress({
-          progress: value,
-          percent: value,
-          text: text || ""
-        });
-      } catch (error) {}
-    }
-
-    try {
-      window.dispatchEvent(
-        new CustomEvent("fidelis:image-progress", {
-          detail: {
-            progress: value,
-            percent: value,
-            text: text || ""
-          }
-        })
-      );
-    } catch (error) {}
-  }
-
-  function loadImage(source) {
-    return new Promise((resolve, reject) => {
-      if (source instanceof HTMLImageElement) {
-        if (source.complete && source.naturalWidth > 0) {
-          resolve(source);
-        } else {
-          source.onload = () => resolve(source);
-          source.onerror = () =>
-            reject(new Error("Gagal membaca gambar."));
-        }
-        return;
-      }
-
-      let url = null;
-
-      if (source instanceof Blob || source instanceof File) {
-        url = URL.createObjectURL(source);
-      } else if (typeof source === "string") {
-        url = source;
-      }
-
-      if (!url) {
-        reject(new Error("Source gambar tidak valid."));
-        return;
-      }
-
-      const image = new Image();
-
-      image.onload = () => {
-        if (source instanceof Blob || source instanceof File) {
-          URL.revokeObjectURL(url);
-        }
-
-        resolve(image);
-      };
-
-      image.onerror = () => {
-        if (source instanceof Blob || source instanceof File) {
-          URL.revokeObjectURL(url);
-        }
-
-        reject(new Error("Gagal memuat gambar."));
-      };
-
-      image.src = url;
-    });
-  }
-
-  function imageToCanvas(image) {
-    const canvas = document.createElement("canvas");
-
-    canvas.width = image.naturalWidth || image.width;
-    canvas.height = image.naturalHeight || image.height;
-
-    const ctx = canvas.getContext("2d", {
-      alpha: false,
-      willReadFrequently: true
-    });
-
-    if (!ctx) {
-      throw new Error("Canvas tidak tersedia.");
-    }
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-
-    ctx.drawImage(
-      image,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    return canvas;
-  }
-
-  function resizeCanvas(canvas, maxDimension) {
     if (
-      canvas.width <= maxDimension &&
-      canvas.height <= maxDimension
+      q === "basic" ||
+      q === "free"
     ) {
-      return canvas;
+      return "standard";
     }
 
-    const scale =
-      maxDimension /
-      Math.max(canvas.width, canvas.height);
-
-    const width = Math.max(
-      1,
-      Math.round(canvas.width * scale)
-    );
-
-    const height = Math.max(
-      1,
-      Math.round(canvas.height * scale)
-    );
-
-    const output = document.createElement("canvas");
-
-    output.width = width;
-    output.height = height;
-
-    const ctx = output.getContext("2d", {
-      alpha: false
-    });
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-
-    ctx.drawImage(
-      canvas,
-      0,
-      0,
-      width,
-      height
-    );
-
-    return output;
-  }
-
-  function getImageData(canvas, x, y, width, height) {
-    const ctx = canvas.getContext("2d", {
-      willReadFrequently: true
-    });
-
-    if (!ctx) {
-      throw new Error("Canvas context tidak tersedia.");
+    if (
+      q === "premium"
+    ) {
+      return "high";
     }
 
-    return ctx.getImageData(
-      x,
-      y,
-      width,
-      height
-    );
+    if (
+      q === "4x" ||
+      q === "4×"
+    ) {
+      return "ultra";
+    }
+
+    if (
+      q !== "standard" &&
+      q !== "high" &&
+      q !== "ultra"
+    ) {
+      return "standard";
+    }
+
+    return q;
   }
+
 
   function getModel(quality) {
-    const q = normalizeQuality(quality);
+    const q =
+      normalizeQuality(quality);
 
-    try {
-      if (
-        window.FidelisRealESRGAN &&
-        typeof window.FidelisRealESRGAN.get === "function"
-      ) {
-        const model = window.FidelisRealESRGAN.get(q);
-        if (model) return model;
-      }
-    } catch (error) {}
+    let model = null;
 
-    try {
-      if (
-        window.FidelisModelRegistry &&
-        typeof window.FidelisModelRegistry.get === "function"
-      ) {
-        const model = window.FidelisModelRegistry.get(q);
-        if (model) return model;
+
+    if (
+      window.FidelisRealESRGAN &&
+      typeof window.FidelisRealESRGAN.get ===
+        "function"
+    ) {
+      model =
+        window.FidelisRealESRGAN.get(q);
+    }
+
+
+    if (
+      !model &&
+      window.FidelisModelRegistry &&
+      typeof window.FidelisModelRegistry.get ===
+        "function"
+    ) {
+      model =
+        window.FidelisModelRegistry.get(q);
+    }
+
+
+    if (
+      !model &&
+      window.FidelisAIModelConfig &&
+      typeof window.FidelisAIModelConfig.get ===
+        "function"
+    ) {
+      model =
+        window.FidelisAIModelConfig.get(q);
+    }
+
+
+    if (!model) {
+      throw new Error(
+        `Model ${q} tidak ditemukan.`
+      );
+    }
+
+
+    return {
+      ...model,
+      quality: q,
+      scale:
+        Number(
+          model.scale || 2
+        )
+    };
+  }
+
+
+  function getModelURL(quality) {
+    const model =
+      getModel(quality);
+
+    if (model.url) {
+      return model.url;
+    }
+
+
+    if (
+      window.FidelisModelURL &&
+      typeof window.FidelisModelURL.get ===
+        "function"
+    ) {
+      const url =
+        window.FidelisModelURL.get(
+          quality
+        );
+
+      if (url) {
+        return url;
       }
-    } catch (error) {}
+    }
+
+
+    if (
+      window.FidelisModelRegistry &&
+      typeof window.FidelisModelRegistry.getURL ===
+        "function"
+    ) {
+      const url =
+        window.FidelisModelRegistry.getURL(
+          quality
+        );
+
+      if (url) {
+        return url;
+      }
+    }
+
 
     return null;
   }
 
-  async function processTile(tileCanvas, quality, options) {
-    const ctx = tileCanvas.getContext("2d", {
-      willReadFrequently: true
-    });
 
-    const imageData = ctx.getImageData(
-      0,
-      0,
-      tileCanvas.width,
-      tileCanvas.height
-    );
+  function checkTier(model) {
+    if (
+      !model ||
+      model.tier !== "vvip"
+    ) {
+      return true;
+    }
+
 
     if (
-      !window.FidelisAIModelBridge ||
-      typeof window.FidelisAIModelBridge.run !== "function"
+      window.FidelisTier &&
+      typeof window.FidelisTier.canUse ===
+        "function"
     ) {
-      throw new Error(
-        "AI Model Bridge belum tersedia."
+      return !!window.FidelisTier.canUse(
+        "ultra"
       );
     }
 
-    return await window.FidelisAIModelBridge.run(
-      imageData,
-      quality,
-      {
-        onProgress: options.onModelProgress
-      }
-    );
+
+    if (
+      window.FidelisTierManager &&
+      typeof window.FidelisTierManager.canUse ===
+        "function"
+    ) {
+      return !!window.FidelisTierManager.canUse(
+        "ultra"
+      );
+    }
+
+
+    /*
+     * Untuk development/testing,
+     * jangan blok Standard/High.
+     */
+    return true;
   }
 
-  async function enhance(source, quality = "standard", options = {}) {
-    if (state.processing) {
+
+  async function initRuntime() {
+    if (
+      !window.FidelisRuntime
+    ) {
       throw new Error(
-        "FIDELIS sedang memproses gambar lain."
+        "FidelisRuntime tidak tersedia."
       );
     }
 
-    const q = normalizeQuality(quality);
 
-    state.processing = true;
-    state.currentQuality = q;
-    state.error = null;
-
-    try {
-      report(
-        options,
-        2,
-        "Membaca gambar..."
+    if (
+      typeof window.FidelisRuntime.init !==
+      "function"
+    ) {
+      throw new Error(
+        "FidelisRuntime.init tidak tersedia."
       );
+    }
 
-      const image =
-        await loadImage(source);
 
-      report(
-        options,
-        8,
-        "Menyiapkan gambar..."
-      );
+    return await window.FidelisRuntime.init();
+  }
 
-      let canvas =
-        imageToCanvas(image);
 
-      /*
-       * Batas input untuk menjaga penggunaan RAM.
-       */
-      const maxInput =
-        Number(options.maxInputDimension) || 4096;
+  async function loadBinary(
+    quality,
+    options = {}
+  ) {
+    const q =
+      normalizeQuality(quality);
 
-      if (
-        canvas.width > maxInput ||
-        canvas.height > maxInput
-      ) {
-        canvas =
-          resizeCanvas(
-            canvas,
-            maxInput
-          );
-      }
 
-      const inputWidth = canvas.width;
-      const inputHeight = canvas.height;
-
-      const model = getModel(q);
-
-      if (!model) {
-        throw new Error(
-          `Model ${q} tidak ditemukan.`
-        );
-      }
-
-      const scale =
-        Number(model.scale) || 2;
-
-      /*
-       * Output maksimum.
-       * Jangan izinkan output terlalu besar karena
-       * canvas raksasa bisa menghabiskan RAM browser.
-       */
-      const maxOutput =
-        Number(options.maxOutputDimension) || 8192;
-
-      const expectedWidth =
-        inputWidth * scale;
-
-      const expectedHeight =
-        inputHeight * scale;
-
-      if (
-        expectedWidth > maxOutput ||
-        expectedHeight > maxOutput
-      ) {
-        const safeInput =
-          maxOutput / scale;
-
-        canvas =
-          resizeCanvas(
-            canvas,
-            safeInput
-          );
-      }
-
-      const width = canvas.width;
-      const height = canvas.height;
-
-      report(
-        options,
-        12,
-        "Menyiapkan AI Real-ESRGAN..."
-      );
-
-      if (
-        !window.FidelisAIModelBridge ||
-        typeof window.FidelisAIModelBridge.createSession !==
-          "function"
-      ) {
-        throw new Error(
-          "AI Model Bridge belum siap."
-        );
-      }
-
-      /*
-       * Session dibuat sekali.
-       * Model loader akan memakai cache kalau sudah ada.
-       */
-      await window.FidelisAIModelBridge.createSession(
+    /*
+     * Prefer V2 loader.
+     */
+    if (
+      window.FidelisModelLoaderV2 &&
+      typeof window.FidelisModelLoaderV2.load ===
+        "function"
+    ) {
+      return await window.FidelisModelLoaderV2.load(
         q,
         {
-          onProgress: payload => {
-            const modelProgress =
-              payload &&
-              Number.isFinite(payload.progress)
-                ? payload.progress
-                : 0;
+          onProgress:
+            options.onProgress,
 
-            report(
-              options,
-              12 + modelProgress * 0.28,
-              `Memuat model AI ${Math.round(modelProgress)}%`
-            );
-          }
+          signal:
+            options.signal
+        }
+      );
+    }
+
+
+    /*
+     * Legacy loader.
+     */
+    if (
+      window.FidelisModelLoader &&
+      typeof window.FidelisModelLoader.load ===
+        "function"
+    ) {
+      return await window.FidelisModelLoader.load(
+        q,
+        {
+          onProgress:
+            options.onProgress,
+
+          signal:
+            options.signal
+        }
+      );
+    }
+
+
+    /*
+     * Last-resort direct fetch.
+     */
+    const url =
+      getModelURL(q);
+
+
+    if (!url) {
+      throw new Error(
+        `URL model ${q} belum dikonfigurasi.`
+      );
+    }
+
+
+    const response =
+      await fetch(
+        url,
+        {
+          cache:
+            "force-cache",
+
+          signal:
+            options.signal
         }
       );
 
-      report(
-        options,
-        40,
-        "AI siap. Memproses gambar..."
+
+    if (!response.ok) {
+      throw new Error(
+        `Model request gagal: HTTP ${response.status}`
       );
+    }
 
-      /*
-       * Tentukan apakah perlu tile processing.
-       */
-      let tileSettings = {
-        tileSize: 512,
-        overlap: 32
-      };
 
-      if (
-        window.FidelisTileEngine &&
-        typeof window.FidelisTileEngine.getRecommendedSettings ===
-          "function"
-      ) {
-        tileSettings =
-          window.FidelisTileEngine.getRecommendedSettings(
-            width,
-            height,
-            options
+    return await response.arrayBuffer();
+  }
+
+
+  async function createSession(
+    quality = "standard",
+    options = {}
+  ) {
+    const q =
+      normalizeQuality(quality);
+
+
+    /*
+     * Return existing session.
+     */
+    if (
+      sessions.has(q)
+    ) {
+      const existing =
+        sessions.get(q);
+
+      return existing.session;
+    }
+
+
+    /*
+     * Share concurrent loading.
+     */
+    if (
+      loading.has(q)
+    ) {
+      return await loading.get(q);
+    }
+
+
+    const promise =
+      (async () => {
+        const model =
+          getModel(q);
+
+
+        if (
+          !checkTier(model)
+        ) {
+          throw new Error(
+            `${q} membutuhkan akses VVIP.`
           );
-      }
+        }
 
-      let result;
 
-      const shouldTile =
-        options.forceTiles === true ||
-        width > tileSettings.tileSize ||
-        height > tileSettings.tileSize;
+        const url =
+          getModelURL(q);
 
-      if (
-        shouldTile &&
-        window.FidelisTileEngine &&
-        typeof window.FidelisTileEngine.process ===
-          "function"
-      ) {
-        result =
-          await window.FidelisTileEngine.process(
-            canvas,
-            async (tileCanvas, tileInfo) => {
-              return await processTile(
-                tileCanvas,
-                q,
-                {
-                  ...options,
-                  onModelProgress: progress => {
-                    if (
-                      progress &&
-                      Number.isFinite(progress.progress)
-                    ) {
-                      const local =
-                        progress.progress / 100;
 
-                      const tileBase =
-                        Number(tileInfo?.progress) || 0;
+        if (!url) {
+          throw new Error(
+            `URL model ${q} belum tersedia.`
+          );
+        }
 
-                      report(
-                        options,
-                        40 +
-                          tileBase * 0.58 +
-                          local * 0.02,
-                        "AI sedang meningkatkan detail..."
-                      );
-                    }
-                  }
-                }
-              );
-            },
+
+        await initRuntime();
+
+
+        console.log(
+          `[FIDELIS] Loading ${q} model...`
+        );
+
+
+        const modelData =
+          await loadBinary(
+            q,
             {
-              ...tileSettings,
+              onProgress:
+                options.onProgress,
 
-              onProgress: payload => {
-                const progress =
-                  payload &&
-                  Number.isFinite(payload.progress)
-                    ? payload.progress
-                    : 0;
-
-                report(
-                  options,
-                  40 + progress * 0.58,
-                  "AI sedang meningkatkan detail..."
-                );
-              }
+              signal:
+                options.signal
             }
           );
-      } else {
-        /*
-         * Direct inference untuk gambar kecil.
-         */
-        const imageData =
-          getImageData(
-            canvas,
-            0,
-            0,
-            width,
-            height
-          );
 
-        result =
-          await window.FidelisAIModelBridge.run(
-            imageData,
-            q
-          );
-      }
 
-      if (
-        !result ||
-        !result.canvas
-      ) {
-        throw new Error(
-          "AI tidak menghasilkan gambar."
+        if (
+          !modelData ||
+          !modelData.byteLength
+        ) {
+          throw new Error(
+            `Binary model ${q} kosong.`
+          );
+        }
+
+
+        console.log(
+          `[FIDELIS] Model ${q} loaded:`,
+          Math.round(
+            modelData.byteLength /
+              1024 /
+              1024 *
+              10
+          ) / 10,
+          "MB"
         );
-      }
 
-      let outputCanvas =
-        result.canvas;
 
-      /*
-       * Final safety limit.
-       */
-      if (
-        outputCanvas.width > maxOutput ||
-        outputCanvas.height > maxOutput
-      ) {
-        outputCanvas =
-          resizeCanvas(
-            outputCanvas,
-            maxOutput
+        /*
+         * IMPORTANT:
+         *
+         * We create the ONNX session here,
+         * then store the actual session per quality.
+         *
+         * This prevents Standard/High
+         * session collisions.
+         */
+        if (
+          !window.FidelisRuntime ||
+          typeof window.FidelisRuntime.createSession !==
+            "function"
+        ) {
+          throw new Error(
+            "FidelisRuntime.createSession tidak tersedia."
           );
-      }
+        }
 
-      report(
-        options,
-        96,
-        "Menyelesaikan hasil..."
-      );
 
-      await new Promise(resolve =>
-        requestAnimationFrame(resolve)
-      );
+        const session =
+          await window.FidelisRuntime.createSession(
+            modelData,
+            {
+              model
+            }
+          );
 
-      report(
-        options,
-        100,
-        "Enhancement selesai."
-      );
 
-      return {
-        canvas: outputCanvas,
+        if (!session) {
+          throw new Error(
+            `ONNX session ${q} gagal dibuat.`
+          );
+        }
 
-        width:
-          outputCanvas.width,
 
-        height:
-          outputCanvas.height,
+        const info = {
+          quality: q,
+          model,
+          session,
+          createdAt:
+            Date.now(),
 
-        inputWidth: width,
-        inputHeight: height,
+          inputNames:
+            Array.from(
+              session.inputNames ||
+                []
+            ),
 
-        scale:
-          Number(result.scale) || scale,
+          outputNames:
+            Array.from(
+              session.outputNames ||
+                []
+            ),
 
-        model:
-          result.model || model,
+          inputMetadata:
+            session.inputMetadata ||
+            null,
 
-        quality: q,
+          outputMetadata:
+            session.outputMetadata ||
+            null,
 
-        aiProcessed: true,
-
-        fallback: false,
-
-        engine:
-          result.engine || "Real-ESRGAN",
-
-        backend:
-          result.backend ||
-          (
+          backend:
             window.FidelisRuntime &&
             typeof window.FidelisRuntime.getBackend ===
               "function"
               ? window.FidelisRuntime.getBackend()
               : null
-          )
-      };
-    } catch (error) {
-      state.error = error;
+        };
 
-      console.error(
-        "[FIDELIS] Image pipeline error:",
-        error
-      );
 
-      throw error;
+        sessions.set(
+          q,
+          info
+        );
+
+
+        console.log(
+          `[FIDELIS] ${q} session ready.`
+        );
+
+        console.log(
+          "[FIDELIS] Input:",
+          info.inputNames
+        );
+
+        console.log(
+          "[FIDELIS] Output:",
+          info.outputNames
+        );
+
+
+        return session;
+      })();
+
+
+    loading.set(
+      q,
+      promise
+    );
+
+
+    try {
+      return await promise;
     } finally {
-      state.processing = false;
-      state.currentQuality = null;
+      loading.delete(q);
     }
   }
 
-  function getStatus() {
+
+  async function run(
+    imageData,
+    quality = "standard",
+    options = {}
+  ) {
+    const q =
+      normalizeQuality(quality);
+
+
+    if (!imageData) {
+      throw new Error(
+        "ImageData kosong."
+      );
+    }
+
+
+    /*
+     * Ensure session exists.
+     */
+    const session =
+      sessions.has(q)
+        ? sessions.get(q).session
+        : await createSession(
+            q,
+            options
+          );
+
+
+    if (!session) {
+      throw new Error(
+        `Session ${q} tidak tersedia.`
+      );
+    }
+
+
+    const info =
+      sessions.get(q);
+
+
+    const model =
+      info &&
+      info.model
+        ? info.model
+        : getModel(q);
+
+
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT call the global
+     * FidelisAIInference.run()
+     * because that can use another
+     * quality's session.
+     *
+     * We create the tensor and execute
+     * THIS session directly.
+     */
+    if (
+      !window.FidelisAIInference
+    ) {
+      throw new Error(
+        "FidelisAIInference tidak tersedia."
+      );
+    }
+
+
+    if (
+      typeof window.FidelisAIInference.imageToTensor !==
+      "function"
+    ) {
+      throw new Error(
+        "FidelisAIInference.imageToTensor tidak tersedia."
+      );
+    }
+
+
+    const tensor =
+      window.FidelisAIInference.imageToTensor(
+        imageData,
+        model
+      );
+
+
+    const inputName =
+      info &&
+      info.inputNames &&
+      info.inputNames.length
+        ? info.inputNames[0]
+        : session.inputNames[0];
+
+
+    const outputName =
+      info &&
+      info.outputNames &&
+      info.outputNames.length
+        ? info.outputNames[0]
+        : session.outputNames[0];
+
+
+    if (!inputName) {
+      throw new Error(
+        `Model ${q} tidak mempunyai input name.`
+      );
+    }
+
+
+    if (!outputName) {
+      throw new Error(
+        `Model ${q} tidak mempunyai output name.`
+      );
+    }
+
+
+    const feeds = {};
+
+    feeds[inputName] =
+      tensor;
+
+
+    console.log(
+      `[FIDELIS] ${q} inference`
+    );
+
+    console.log(
+      "[FIDELIS] Input shape:",
+      tensor.dims
+    );
+
+
+    const started =
+      performance.now();
+
+
+    const outputs =
+      await session.run(
+        feeds
+      );
+
+
+    const elapsed =
+      performance.now() -
+      started;
+
+
+    const output =
+      outputs[outputName];
+
+
+    if (!output) {
+      throw new Error(
+        `Model ${q} tidak menghasilkan output.`
+      );
+    }
+
+
+    console.log(
+      "[FIDELIS] Output shape:",
+      output.dims
+    );
+
+
+    console.log(
+      `[FIDELIS] Inference time: ${Math.round(elapsed)} ms`
+    );
+
+
+    /*
+     * Convert output using the same model
+     * configuration.
+     */
+    const canvas =
+      window.FidelisAIInference.tensorToCanvas(
+        output,
+        {
+          model
+        }
+      );
+
+
+    if (!canvas) {
+      throw new Error(
+        "Output canvas gagal dibuat."
+      );
+    }
+
+
     return {
-      processing:
-        state.processing,
+      canvas,
 
-      quality:
-        state.currentQuality,
+      width:
+        canvas.width,
 
-      error:
-        state.error
-          ? state.error.message ||
-            String(state.error)
-          : null,
+      height:
+        canvas.height,
 
-      tileEngine:
-        !!window.FidelisTileEngine,
+      scale:
+        model.scale,
 
-      bridge:
-        !!window.FidelisAIModelBridge
+      model,
+
+      quality: q,
+
+      aiProcessed:
+        true,
+
+      fallback:
+        false,
+
+      engine:
+        "Real-ESRGAN ONNX",
+
+      backend:
+        info.backend,
+
+      inputShape:
+        Array.from(
+          tensor.dims
+        ),
+
+      outputShape:
+        Array.from(
+          output.dims
+        ),
+
+      inferenceTime:
+        Math.round(
+          elapsed
+        )
     };
   }
 
-  window.FidelisImagePipeline = {
-    normalizeQuality,
-    loadImage,
-    imageToCanvas,
-    resizeCanvas,
-    getImageData,
-    enhance,
-    getStatus
+
+  function getSession(
+    quality
+  ) {
+    const q =
+      normalizeQuality(quality);
+
+    const info =
+      sessions.get(q);
+
+    return info
+      ? info.session
+      : null;
+  }
+
+
+  function getStatus() {
+    const models = {};
+
+    for (
+      const [
+        quality,
+        info
+      ] of sessions.entries()
+    ) {
+      models[quality] = {
+        loaded:
+          true,
+
+        createdAt:
+          info.createdAt,
+
+        inputNames:
+          info.inputNames,
+
+        outputNames:
+          info.outputNames,
+
+        inputMetadata:
+          info.inputMetadata,
+
+        outputMetadata:
+          info.outputMetadata,
+
+        backend:
+          info.backend
+      };
+    }
+
+
+    return {
+      loadedSessions:
+        Object.keys(models),
+
+      loading:
+        Array.from(
+          loading.keys()
+        ),
+
+      count:
+        sessions.size,
+
+      models
+    };
+  }
+
+
+  async function dispose(
+    quality
+  ) {
+    const q =
+      normalizeQuality(quality);
+
+
+    const info =
+      sessions.get(q);
+
+
+    if (!info) {
+      return false;
+    }
+
+
+    try {
+      if (
+        info.session &&
+        typeof info.session.release ===
+          "function"
+      ) {
+        await info.session.release();
+      }
+    } catch (error) {
+      console.warn(
+        `[FIDELIS] Failed releasing ${q} session:`,
+        error
+      );
+    }
+
+
+    sessions.delete(q);
+
+    return true;
+  }
+
+
+  async function disposeAll() {
+    const qualities =
+      Array.from(
+        sessions.keys()
+      );
+
+
+    for (
+      const quality of qualities
+    ) {
+      await dispose(
+        quality
+      );
+    }
+
+
+    sessions.clear();
+
+    return true;
+  }
+
+
+  function clear() {
+    sessions.clear();
+    loading.clear();
+  }
+
+
+  window.FidelisAIModelBridge = {
+    createSession,
+    run,
+    getSession,
+    getModel,
+    getModelURL,
+    getStatus,
+    dispose,
+    disposeAll,
+    clear
   };
 
+
   console.log(
-    "[FIDELIS] Image Pipeline loaded."
+    "[FIDELIS] AI Model Bridge V2 loaded."
   );
 })();
