@@ -1,518 +1,497 @@
 (function () {
   "use strict";
 
-  const FidelisModelLoaderV2 = {
+  const cache = new Map();
+  const loading = new Map();
+  const controllers = new Map();
 
-    version: "1.0.0",
+  function normalizeQuality(quality) {
+    const q = String(quality || "standard").toLowerCase();
 
-    cache: new Map(),
+    if (q === "ultra" || q === "vvip") return "ultra";
+    if (q === "high" || q === "hq" || q === "premium") return "high";
 
-    controllers: new Map(),
+    return "standard";
+  }
 
+  function getModel(quality) {
+    const q = normalizeQuality(quality);
 
-    normalizeQuality(
-      quality
-    ) {
-
+    try {
       if (
-        typeof FidelisModelRegistry !==
-        "undefined"
+        window.FidelisRealESRGAN &&
+        typeof window.FidelisRealESRGAN.get === "function"
       ) {
-
-        return FidelisModelRegistry
-          .normalizeQuality(
-            quality
-          );
-
+        const model = window.FidelisRealESRGAN.get(q);
+        if (model) return model;
       }
+    } catch (error) {}
 
-      return String(
-        quality || "standard"
-      ).toLowerCase();
-
-    },
-
-
-    getURL(
-      quality
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-
+    try {
       if (
-        typeof FidelisModelRegistry !==
-        "undefined"
+        window.FidelisModelRegistry &&
+        typeof window.FidelisModelRegistry.get === "function"
       ) {
-
-        return FidelisModelRegistry
-          .getURL(
-            key
-          );
-
+        const model = window.FidelisModelRegistry.get(q);
+        if (model) return model;
       }
+    } catch (error) {}
 
-
+    try {
       if (
-        typeof FidelisModelURL !==
-        "undefined"
+        window.FidelisAIModelConfig &&
+        typeof window.FidelisAIModelConfig.get === "function"
       ) {
-
-        return FidelisModelURL.get(
-          key
-        );
-
+        return window.FidelisAIModelConfig.get(q);
       }
+    } catch (error) {}
 
+    return null;
+  }
 
-      return null;
-    },
+  function getURL(quality) {
+    const q = normalizeQuality(quality);
+    const model = getModel(q);
 
-
-    async load(
-      quality,
-      options = {}
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-
-      /*
-       * Cache.
-       */
-
-      if (
-        this.cache.has(key) &&
-        !options.forceReload
-      ) {
-
-        return {
-          success: true,
-          quality: key,
-          data:
-            this.cache.get(key),
-          cached: true
-        };
-
-      }
-
-
-      const url =
-        this.getURL(
-          key
-        );
-
-
-      if (!url) {
-
-        return {
-          success: false,
-          quality: key,
-          error:
-            "Model URL belum dikonfigurasi."
-        };
-
-      }
-
-
-      /*
-       * VVIP protection.
-       */
-
-      if (
-        key === "ultra" &&
-        typeof FidelisTier !==
-        "undefined"
-      ) {
-
-        if (
-          !FidelisTier.canUse(
-            "ultra"
-          )
-        ) {
-
-          return {
-            success: false,
-            quality: key,
-            error:
-              "Ultra membutuhkan VVIP."
-          };
-
-        }
-
-      }
-
-
-      /*
-       * Abort controller.
-       */
-
-      const controller =
-        new AbortController();
-
-      this.controllers.set(
-        key,
-        controller
-      );
-
-
-      try {
-
-        if (
-          typeof options.onProgress ===
-          "function"
-        ) {
-
-          options.onProgress({
-            stage: "download",
-            percent: 0,
-            loaded: 0,
-            total: 0
-          });
-
-        }
-
-
-        const response =
-          await fetch(
-            url,
-            {
-              method: "GET",
-              cache: "force-cache",
-              signal:
-                controller.signal
-            }
-          );
-
-
-        if (!response.ok) {
-
-          throw new Error(
-            "HTTP " +
-            response.status
-          );
-
-        }
-
-
-        const total =
-          Number(
-            response.headers.get(
-              "content-length"
-            )
-          ) || 0;
-
-
-        /*
-         * Streaming download jika tersedia.
-         */
-
-        let data;
-
-
-        if (
-          response.body &&
-          response.body.getReader
-        ) {
-
-          const reader =
-            response.body.getReader();
-
-          const chunks = [];
-
-          let loaded = 0;
-
-          while (true) {
-
-            const {
-              done,
-              value
-            } =
-              await reader.read();
-
-            if (done) break;
-
-            chunks.push(
-              value
-            );
-
-            loaded +=
-              value.byteLength;
-
-
-            if (
-              typeof options.onProgress ===
-              "function"
-            ) {
-
-              const percent =
-                total
-                  ? Math.round(
-                      (
-                        loaded /
-                        total
-                      ) * 100
-                    )
-                  : 0;
-
-              options.onProgress({
-                stage: "download",
-                percent,
-                loaded,
-                total
-              });
-
-            }
-
-          }
-
-
-          const merged =
-            new Uint8Array(
-              loaded
-            );
-
-          let offset = 0;
-
-          for (
-            const chunk of chunks
-          ) {
-
-            merged.set(
-              chunk,
-              offset
-            );
-
-            offset +=
-              chunk.length;
-
-          }
-
-          data =
-            merged.buffer;
-
-        } else {
-
-          data =
-            await response.arrayBuffer();
-
-        }
-
-
-        if (
-          !data ||
-          data.byteLength === 0
-        ) {
-
-          throw new Error(
-            "Model binary kosong."
-          );
-
-        }
-
-
-        /*
-         * Cache.
-         */
-
-        this.cache.set(
-          key,
-          data
-        );
-
-
-        if (
-          typeof options.onProgress ===
-          "function"
-        ) {
-
-          options.onProgress({
-            stage: "download",
-            percent: 100,
-            loaded:
-              data.byteLength,
-            total:
-              total ||
-              data.byteLength
-          });
-
-        }
-
-
-        return {
-
-          success: true,
-
-          quality: key,
-
-          data,
-
-          byteLength:
-            data.byteLength,
-
-          cached: false,
-
-          url
-
-        };
-
-      } catch (error) {
-
-        if (
-          error.name ===
-          "AbortError"
-        ) {
-
-          return {
-            success: false,
-            quality: key,
-            cancelled: true,
-            error:
-              "Model loading dibatalkan."
-          };
-
-        }
-
-
-        return {
-          success: false,
-          quality: key,
-          error:
-            error.message ||
-            "Gagal memuat model."
-        };
-
-      } finally {
-
-        this.controllers.delete(
-          key
-        );
-
-      }
-
-    },
-
-
-    cancel(
-      quality
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-      const controller =
-        this.controllers.get(
-          key
-        );
-
-      if (!controller) {
-        return false;
-      }
-
-      controller.abort();
-
-      return true;
-    },
-
-
-    clear(
-      quality
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-      this.cache.delete(
-        key
-      );
-
-      return true;
-    },
-
-
-    clearAll() {
-
-      this.cache.clear();
-
-      return true;
-
-    },
-
-
-    isLoaded(
-      quality
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-      return this.cache.has(
-        key
-      );
-
-    },
-
-
-    getLoadedSize(
-      quality
-    ) {
-
-      const key =
-        this.normalizeQuality(
-          quality
-        );
-
-      const data =
-        this.cache.get(
-          key
-        );
-
-      return data
-        ? data.byteLength
-        : 0;
-
-    },
-
-
-    getStatus() {
-
-      const loaded = {};
-
-      this.cache.forEach(
-        (data, key) => {
-
-          loaded[key] =
-            data.byteLength;
-
-        }
-      );
-
-      return {
-        loaded,
-        loading:
-          Array.from(
-            this.controllers.keys()
-          )
-      };
-
+    if (model && model.url) {
+      return model.url;
     }
 
+    try {
+      if (
+        window.FidelisModelURL &&
+        typeof window.FidelisModelURL.get === "function"
+      ) {
+        return window.FidelisModelURL.get(q);
+      }
+    } catch (error) {}
+
+    return null;
+  }
+
+  function checkTier(model) {
+    if (!model) {
+      throw new Error("Model tidak ditemukan.");
+    }
+
+    if (model.tier === "vvip") {
+      let allowed = false;
+
+      try {
+        if (
+          window.FidelisTierManager &&
+          typeof window.FidelisTierManager.isVVIP === "function"
+        ) {
+          allowed = window.FidelisTierManager.isVVIP();
+        }
+      } catch (error) {}
+
+      if (!allowed) {
+        throw new Error(
+          "FIDELIS Ultra hanya tersedia untuk pengguna VVIP."
+        );
+      }
+    }
+
+    return true;
+  }
+
+  function emitProgress(quality, progress, loaded, total, callback) {
+    const value = Math.max(
+      0,
+      Math.min(100, Math.round(progress))
+    );
+
+    const payload = {
+      quality,
+      progress: value,
+      loaded: loaded || 0,
+      total: total || 0,
+      percent: value
+    };
+
+    if (typeof callback === "function") {
+      try {
+        callback(payload);
+      } catch (error) {
+        console.warn(
+          "[FIDELIS] Progress callback error:",
+          error
+        );
+      }
+    }
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent("fidelis:model-progress", {
+          detail: payload
+        })
+      );
+    } catch (error) {}
+  }
+
+  async function fetchModel(quality, url, options = {}) {
+    const q = normalizeQuality(quality);
+
+    const controller = new AbortController();
+
+    controllers.set(q, controller);
+
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "force-cache",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/octet-stream, application/octet-stream"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Download model gagal. HTTP ${response.status}.`
+      );
+    }
+
+    const contentLengthHeader =
+      response.headers.get("content-length");
+
+    const total = contentLengthHeader
+      ? Number(contentLengthHeader)
+      : 0;
+
+    /*
+     * Kalau browser menyediakan ReadableStream,
+     * kita download sambil menghitung progress.
+     */
+
+    if (response.body && response.body.getReader) {
+      const reader = response.body.getReader();
+
+      const chunks = [];
+      let loaded = 0;
+
+      while (true) {
+        const result = await reader.read();
+
+        if (result.done) break;
+
+        const chunk = result.value;
+
+        chunks.push(chunk);
+
+        loaded += chunk.byteLength;
+
+        let progress = 0;
+
+        if (total > 0) {
+          progress = (loaded / total) * 100;
+        } else {
+          /*
+           * Content-Length kadang tidak tersedia.
+           * Tetap kasih progress indikatif.
+           */
+          progress = Math.min(
+            95,
+            5 + Math.log10(
+              Math.max(1, loaded)
+            ) * 15
+          );
+        }
+
+        emitProgress(
+          q,
+          progress,
+          loaded,
+          total,
+          options.onProgress
+        );
+      }
+
+      const buffer = new Uint8Array(loaded);
+
+      let offset = 0;
+
+      for (const chunk of chunks) {
+        buffer.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+
+      emitProgress(
+        q,
+        100,
+        loaded,
+        total || loaded,
+        options.onProgress
+      );
+
+      return buffer.buffer;
+    }
+
+    /*
+     * Fallback kalau ReadableStream tidak tersedia.
+     */
+
+    const buffer = await response.arrayBuffer();
+
+    emitProgress(
+      q,
+      100,
+      buffer.byteLength,
+      total || buffer.byteLength,
+      options.onProgress
+    );
+
+    return buffer;
+  }
+
+  async function load(quality = "standard", options = {}) {
+    const q = normalizeQuality(quality);
+
+    /*
+     * Return cache kalau model sudah pernah di-load.
+     */
+    if (
+      cache.has(q) &&
+      options.forceReload !== true
+    ) {
+      const buffer = cache.get(q);
+
+      emitProgress(
+        q,
+        100,
+        buffer.byteLength,
+        buffer.byteLength,
+        options.onProgress
+      );
+
+      return buffer;
+    }
+
+    /*
+     * Kalau sedang didownload oleh request lain,
+     * ikut promise yang sama.
+     */
+    if (
+      loading.has(q) &&
+      options.forceReload !== true
+    ) {
+      return loading.get(q);
+    }
+
+    const model = getModel(q);
+
+    if (!model) {
+      throw new Error(
+        `Konfigurasi model ${q} tidak ditemukan.`
+      );
+    }
+
+    checkTier(model);
+
+    const url = getURL(q);
+
+    if (!url) {
+      throw new Error(
+        `URL model ${q} belum dikonfigurasi.`
+      );
+    }
+
+    const promise = (async () => {
+      try {
+        console.log(
+          `[FIDELIS] Downloading ${q} model...`
+        );
+
+        emitProgress(
+          q,
+          0,
+          0,
+          0,
+          options.onProgress
+        );
+
+        const buffer = await fetchModel(
+          q,
+          url,
+          options
+        );
+
+        if (
+          !buffer ||
+          buffer.byteLength === 0
+        ) {
+          throw new Error(
+            `Model ${q} yang diterima kosong.`
+          );
+        }
+
+        /*
+         * Basic sanity check.
+         *
+         * ONNX file biasanya diawali dengan struktur
+         * protobuf. Kita tidak memaksa magic bytes tertentu
+         * karena ONNX protobuf tidak punya signature sederhana
+         * seperti PNG/ZIP.
+         */
+
+        cache.set(q, buffer);
+
+        console.log(
+          `[FIDELIS] ${q} model loaded: ` +
+          `${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`
+        );
+
+        return buffer;
+      } catch (error) {
+        console.error(
+          `[FIDELIS] ${q} model loading failed:`,
+          error
+        );
+
+        throw new Error(
+          `Gagal memuat model ${q}: ${
+            error.message || error
+          }`
+        );
+      } finally {
+        loading.delete(q);
+        controllers.delete(q);
+      }
+    })();
+
+    loading.set(q, promise);
+
+    return promise;
+  }
+
+  function isLoaded(quality) {
+    return cache.has(
+      normalizeQuality(quality)
+    );
+  }
+
+  function getLoadedSize(quality) {
+    const buffer =
+      cache.get(
+        normalizeQuality(quality)
+      );
+
+    return buffer
+      ? buffer.byteLength
+      : 0;
+  }
+
+  function getStatus() {
+    const models = {};
+
+    [
+      "standard",
+      "high",
+      "ultra"
+    ].forEach(q => {
+      const model = getModel(q);
+      const buffer = cache.get(q);
+
+      models[q] = {
+        configured: !!getURL(q),
+        loaded: !!buffer,
+        loading: loading.has(q),
+        size: buffer
+          ? buffer.byteLength
+          : 0,
+        sizeMB: buffer
+          ? Number(
+              (
+                buffer.byteLength /
+                1024 /
+                1024
+              ).toFixed(2)
+            )
+          : 0,
+        model: model || null
+      };
+    });
+
+    return {
+      models,
+      cacheCount: cache.size,
+      loadingCount: loading.size
+    };
+  }
+
+  function cancel(quality) {
+    const q = normalizeQuality(quality);
+
+    const controller =
+      controllers.get(q);
+
+    if (controller) {
+      controller.abort();
+
+      controllers.delete(q);
+
+      console.warn(
+        `[FIDELIS] Download ${q} dibatalkan.`
+      );
+    }
+  }
+
+  function clear(quality) {
+    const q = normalizeQuality(quality);
+
+    cancel(q);
+
+    cache.delete(q);
+  }
+
+  function clearAll() {
+    controllers.forEach(controller => {
+      try {
+        controller.abort();
+      } catch (error) {}
+    });
+
+    controllers.clear();
+    loading.clear();
+    cache.clear();
+
+    console.log(
+      "[FIDELIS] Semua model cache dibersihkan."
+    );
+  }
+
+  function getLoadedModels() {
+    return Array.from(
+      cache.keys()
+    );
+  }
+
+  function getTotalCacheSize() {
+    let total = 0;
+
+    cache.forEach(buffer => {
+      total += buffer.byteLength;
+    });
+
+    return total;
+  }
+
+  window.FidelisModelLoaderV2 = {
+    load,
+
+    isLoaded,
+    getLoadedSize,
+
+    getStatus,
+    getLoadedModels,
+    getTotalCacheSize,
+
+    cancel,
+    clear,
+    clearAll
   };
 
-
-  window.FidelisModelLoaderV2 =
-    FidelisModelLoaderV2;
-
+  console.log(
+    "[FIDELIS] Model Loader V2 loaded."
+  );
 })();
