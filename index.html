@@ -25,11 +25,12 @@
 
 <body>
 
-  <!-- =========================
+  <!-- =========================================
        HEADER
-  ========================== -->
+  ========================================== -->
 
   <header class="header">
+
     <div class="container header-inner">
 
       <div class="brand">
@@ -39,6 +40,7 @@
         </div>
 
         <div>
+
           <div class="brand-name">
             FIDELIS
           </div>
@@ -46,9 +48,11 @@
           <div class="brand-tagline">
             Enhance. Don't Change.
           </div>
+
         </div>
 
       </div>
+
 
       <button
         id="vipButton"
@@ -59,12 +63,13 @@
       </button>
 
     </div>
+
   </header>
 
 
-  <!-- =========================
+  <!-- =========================================
        MAIN
-  ========================== -->
+  ========================================== -->
 
   <main class="container">
 
@@ -89,9 +94,9 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =======================================
          WORKSPACE
-    ========================== -->
+    ======================================== -->
 
     <section class="workspace">
 
@@ -136,9 +141,9 @@
       </div>
 
 
-      <!-- =========================
+      <!-- =======================================
            UPLOAD
-      ========================== -->
+      ======================================== -->
 
       <section
         id="uploadSection"
@@ -154,18 +159,28 @@
             ↑
           </div>
 
+
           <h2 id="uploadTitle">
             Upload your photo
           </h2>
+
 
           <p id="uploadDescription">
             JPG, JPEG, PNG or WEBP
           </p>
 
+
           <p id="uploadLimit">
             Maximum file size: 20 MB
           </p>
 
+
+          <!--
+            IMPORTANT:
+            The input is directly connected to the
+            label below. This means the file picker
+            works even if app.js fails.
+          -->
 
           <input
             id="fileInput"
@@ -175,22 +190,22 @@
           >
 
 
-          <button
+          <label
             id="uploadButton"
             class="primary-button"
-            type="button"
+            for="fileInput"
           >
             Choose File
-          </button>
+          </label>
 
         </div>
 
       </section>
 
 
-      <!-- =========================
+      <!-- =======================================
            PREVIEW
-      ========================== -->
+      ======================================== -->
 
       <section
         id="previewSection"
@@ -232,9 +247,9 @@
       </section>
 
 
-      <!-- =========================
+      <!-- =======================================
            QUALITY
-      ========================== -->
+      ======================================== -->
 
       <section
         id="qualitySection"
@@ -311,9 +326,9 @@
       </section>
 
 
-      <!-- =========================
-           IDENTITY PROTECTION
-      ========================== -->
+      <!-- =======================================
+           IDENTITY PRESERVATION
+      ======================================== -->
 
       <section class="identity-section">
 
@@ -322,6 +337,7 @@
           <div class="identity-icon">
             ✓
           </div>
+
 
           <div>
 
@@ -342,9 +358,9 @@
       </section>
 
 
-      <!-- =========================
-           ENHANCE BUTTON
-      ========================== -->
+      <!-- =======================================
+           ENHANCE
+      ======================================== -->
 
       <div class="enhance-action">
 
@@ -360,9 +376,9 @@
       </div>
 
 
-      <!-- =========================
+      <!-- =======================================
            PROCESSING
-      ========================== -->
+      ======================================== -->
 
       <section
         id="processingSection"
@@ -373,13 +389,16 @@
 
           <div class="spinner"></div>
 
+
           <span class="eyebrow">
             FIDELIS AI
           </span>
 
+
           <h2>
             Enhancing your image
           </h2>
+
 
           <p id="processingText">
             Preparing AI engine...
@@ -414,9 +433,9 @@
       </section>
 
 
-      <!-- =========================
+      <!-- =======================================
            RESULT
-      ========================== -->
+      ======================================== -->
 
       <section
         id="resultSection"
@@ -436,6 +455,7 @@
             </h2>
 
           </div>
+
 
           <span class="result-quality">
             AI PROCESSED
@@ -479,9 +499,9 @@
       </section>
 
 
-      <!-- =========================
+      <!-- =======================================
            VVIP
-      ========================== -->
+      ======================================== -->
 
       <section
         id="vvipSection"
@@ -491,17 +511,20 @@
         <div class="vvip-card">
 
           <span class="eyebrow">
-            VVIP
+            FIDELIS VVIP
           </span>
+
 
           <h2>
             Unlock higher quality.
           </h2>
 
+
           <p>
             Get access to more advanced enhancement,
             higher resolution and Ultra 4× processing.
           </p>
+
 
           <button
             id="upgradeButton"
@@ -520,9 +543,9 @@
   </main>
 
 
-  <!-- =========================
+  <!-- =========================================
        FOOTER
-  ========================== -->
+  ========================================== -->
 
   <footer class="footer">
 
@@ -530,9 +553,11 @@
       FIDELIS
     </div>
 
+
     <p>
       Enhance. Don't Change.
     </p>
+
 
     <small>
       © 2026 FIDELIS. Built with AI.
@@ -541,9 +566,9 @@
   </footer>
 
 
-  <!-- =========================
+  <!-- =========================================
        VVIP MODAL
-  ========================== -->
+  ========================================== -->
 
   <div
     id="vipModal"
@@ -573,9 +598,11 @@
         FIDELIS VVIP
       </span>
 
+
       <h2>
         More power. More detail.
       </h2>
+
 
       <p>
         Upgrade your enhancement experience
@@ -621,20 +648,20 @@
   </div>
 
 
-  <!-- ==================================================
-       FIDELIS APP CONTROLLER
+  <!-- =========================================
+       FIDELIS APP
        
-       IMPORTANT:
-       app.js loads FIRST so UI remains functional
-       even if an AI module has an error.
-  =================================================== -->
+       app.js is loaded first so the basic UI
+       controller can initialize independently
+       from the AI modules.
+  ========================================== -->
 
   <script src="js/app.js"></script>
 
 
-  <!-- ==================================================
+  <!-- =========================================
        AI ENGINE
-  =================================================== -->
+  ========================================== -->
 
   <script src="js/ai-engine.js"></script>
 
