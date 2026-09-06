@@ -1,1102 +1,1048 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8"><meta
-name="viewport"
-content="width=device-width, initial-scale=1.0"
+  <meta charset="UTF-8">
 
-«»
-
-<meta
-name="theme-color"
-content="#050509"
-
-«»
-
-<meta
-name="description"
-content="FIDELIS — AI photo enhancement that preserves your original appearance."
-
-«»
-
-  <title>FIDELIS — Enhance. Don't Change.</title>  <link
-    rel="stylesheet"
-    href="css/style.css"
-  >
-</head><body>  <!-- =====================================================
-       HEADER
-       ===================================================== -->  <header class="header"><div class="brand">
-
-  <div class="brand-mark">
-    F
-  </div>
-
-  <div>
-    <div class="brand-name">
-      FIDELIS
-    </div>
-
-    <div class="brand-tagline">
-      Enhance. Don't Change.
-    </div>
-  </div>
-
-</div>
-
-<div class="header-status">
-  AI ENHANCEMENT
-</div>
-
-  </header>  <!-- =====================================================
-       MAIN
-       ===================================================== -->  <main class="container"><!-- ===================================================
-     HERO
-     =================================================== -->
-
-<section class="hero">
-
-  <h1>
-    Enhance Your Photos.
-    <span>Keep Your Identity.</span>
-  </h1>
-
-  <p class="hero-description">
-    FIDELIS uses AI enhancement to improve
-    resolution, sharpness, and detail —
-    while preserving the original appearance.
-  </p>
-
-</section>
-
-
-<!-- ===================================================
-     UPLOAD
-     =================================================== -->
-
-<section class="upload-card">
-
-  <div class="upload-icon">
-    +
-  </div>
-
-  <h2>
-    Choose your media
-  </h2>
-
-  <p>
-    Upload an image or video to begin.
-  </p>
-
-  <input
-    type="file"
-    id="fileInput"
-    accept="image/*,video/*"
-    hidden
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
   >
 
-  <label
-    id="uploadButton"
-    class="primary-button"
-    for="fileInput"
+  <meta
+    name="theme-color"
+    content="#07070b"
   >
-    Choose File
-  </label>
 
-  <div
-    id="fileName"
-    class="file-name"
-  ></div>
+  <title>FIDELIS — Enhance. Don't Change.</title>
 
-</section>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
+    :root {
+      --bg: #07070b;
+      --panel: #101017;
+      --panel-2: #15151e;
+      --border: rgba(255,255,255,.09);
+      --text: #f5f5f7;
+      --muted: #8e8e9a;
+      --accent: #a78bfa;
+      --accent-2: #7c3aed;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
 
-<!-- ===================================================
-     MEDIA PREVIEW
-     =================================================== -->
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(
+          circle at 50% -10%,
+          rgba(124,58,237,.20),
+          transparent 40%
+        ),
+        var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
 
-<section
-  id="previewSection"
-  class="preview-section hidden"
->
+    button,
+    label {
+      font: inherit;
+    }
 
-  <div class="section-header">
+    .app {
+      width: min(100%, 1100px);
+      margin: auto;
+      padding: 24px 16px 60px;
+    }
 
-    <div>
+    .header {
+      text-align: center;
+      padding: 32px 10px 28px;
+    }
 
-      <span class="eyebrow">
-        PREVIEW
-      </span>
+    .brand {
+      font-size: clamp(34px, 9vw, 64px);
+      font-weight: 900;
+      letter-spacing: .12em;
+      line-height: 1;
+    }
 
-      <h2>
-        Your Media
-      </h2>
+    .tagline {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: .08em;
+    }
 
-    </div>
+    .badge {
+      display: inline-flex;
+      margin-top: 18px;
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--accent);
+      background: rgba(167,139,250,.07);
+      font-size: 12px;
+      font-weight: 700;
+    }
 
-  </div>
+    .card {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.035),
+          rgba(255,255,255,.015)
+        ),
+        var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,.20);
+    }
 
-  <div class="media-preview-wrapper">
+    .upload-zone {
+      min-height: 220px;
+      border: 1px dashed rgba(167,139,250,.35);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px 18px;
+      background: rgba(167,139,250,.025);
+    }
 
-    <div
-      id="mediaPreview"
-      class="media-preview"
-    ></div>
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(167,139,250,.10);
+      color: var(--accent);
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
 
-  </div>
+    .upload-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
 
-</section>
+    .upload-subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 7px;
+      max-width: 430px;
+    }
 
+    input[type="file"] {
+      display: none;
+    }
 
-<!-- ===================================================
-     AI CONTROLS
-     =================================================== -->
+    .primary-button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+      margin-top: 20px;
+      padding: 0 24px;
+      border-radius: 13px;
+      border: 0;
+      cursor: pointer;
+      background:
+        linear-gradient(
+          135deg,
+          var(--accent),
+          var(--accent-2)
+        );
+      color: white;
+      font-weight: 800;
+      box-shadow:
+        0 12px 30px rgba(124,58,237,.25);
+      transition: .2s ease;
+    }
 
-<section
-  id="controlsSection"
-  class="controls-section hidden"
->
+    .primary-button:hover {
+      transform: translateY(-1px);
+    }
 
-  <div class="section-header">
+    .primary-button:active {
+      transform: translateY(1px);
+    }
 
-    <div>
+    .section-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
 
-      <span class="eyebrow">
-        AI ENGINE
-      </span>
+    .preview-wrap {
+      display: none;
+    }
 
-      <h2>
-        Enhancement Quality
-      </h2>
+    #mediaPreview {
+      width: 100%;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #050508;
+      border: 1px solid var(--border);
+    }
 
-    </div>
+    #mediaPreview img,
+    #mediaPreview video,
+    #mediaPreview canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 560px;
+      object-fit: contain;
+      border-radius: 14px;
+    }
 
-  </div>
+    .file-info {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-word;
+    }
 
+    .quality-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
 
-  <div class="quality-grid">
+    .quality-card {
+      position: relative;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      border-radius: 16px;
+      padding: 17px;
+      transition: .2s ease;
+    }
 
-    <button
-      type="button"
-      class="quality-card active"
-      data-quality="standard"
+    .quality-card:hover {
+      border-color:
+        rgba(167,139,250,.35);
+    }
+
+    .quality-card.active {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px var(--accent),
+        0 10px 30px rgba(124,58,237,.12);
+    }
+
+    .quality-name {
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .quality-desc {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+
+    .quality-tag {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 7px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .enhance-button {
+      width: 100%;
+      min-height: 54px;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 15px;
+      cursor: pointer;
+      background:
+        linear-gradient(
+          135deg,
+          #8b5cf6,
+          #6d28d9
+        );
+      color: white;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: .02em;
+    }
+
+    .enhance-button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      display: none;
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 16px;
+      background: rgba(255,255,255,.025);
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow:
+        0 0 12px rgba(167,139,250,.7);
+    }
+
+    .status-text {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .progress {
+      height: 5px;
+      background: rgba(255,255,255,.07);
+      border-radius: 99px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      transition: width .3s ease;
+    }
+
+    .result {
+      display: none;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .result-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    .download-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 48px;
+      margin-top: 16px;
+      border-radius: 13px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .error {
+      display: none;
+      margin-top: 14px;
+      padding: 13px;
+      border-radius: 12px;
+      background: rgba(248,113,113,.08);
+      border: 1px solid rgba(248,113,113,.20);
+      color: #fca5a5;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .error.visible {
+      display: block;
+    }
+
+    .diagnostic {
+      margin-top: 16px;
+    }
+
+    .diagnostic summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    #diagnosticOutput {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #050508;
+      border: 1px solid var(--border);
+      color: #a7f3d0;
+      font-family: monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    footer {
+      text-align: center;
+      color: #555560;
+      font-size: 11px;
+      padding: 30px 10px 0;
+    }
+
+    @media (max-width: 680px) {
+      .quality-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .app {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .card {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="app">
+
+    <header class="header">
+      <div class="brand">FIDELIS</div>
+
+      <div class="tagline">
+        Enhance. Don't Change.
+      </div>
+
+      <div class="badge">
+        REAL AI · REAL-ESRGAN · WEBGPU
+      </div>
+    </header>
+
+    <section class="card">
+
+      <div class="upload-zone">
+
+        <div class="upload-icon">
+          ↑
+        </div>
+
+        <div class="upload-title">
+          Enhance your image
+        </div>
+
+        <div class="upload-subtitle">
+          Upload an image and FIDELIS will enhance
+          resolution, sharpness and detail while
+          preserving the original appearance.
+        </div>
+
+        <input
+          id="fileInput"
+          type="file"
+          accept="image/*"
+        >
+
+        <label
+          id="uploadButton"
+          class="primary-button"
+          for="fileInput"
+        >
+          Choose File
+        </label>
+
+      </div>
+
+    </section>
+
+    <section
+      id="previewSection"
+      class="card preview-wrap"
     >
 
-      <span class="quality-title">
-        Standard
-      </span>
+      <div class="section-title">
+        Original
+      </div>
 
-      <span class="quality-description">
-        Clean and natural enhancement
-      </span>
-
-      <span class="quality-scale">
-        2×
-      </span>
-
-    </button>
-
-
-    <button
-      type="button"
-      class="quality-card"
-      data-quality="high"
-    >
-
-      <span class="quality-title">
-        High
-      </span>
-
-      <span class="quality-description">
-        Higher detail and sharper output
-      </span>
-
-      <span class="quality-scale">
-        2×
-      </span>
-
-    </button>
-
-
-    <button
-      type="button"
-      class="quality-card"
-      data-quality="ultra"
-    >
-
-      <span class="quality-title">
-        Ultra
-      </span>
-
-      <span class="quality-description">
-        Maximum AI enhancement
-      </span>
-
-      <span class="quality-scale">
-        4×
-      </span>
-
-      <span class="vvip-badge">
-        VVIP
-      </span>
-
-    </button>
-
-  </div>
-
-
-  <button
-    type="button"
-    id="enhanceButton"
-    class="enhance-button"
-  >
-    <span>
-      Enhance with AI
-    </span>
-  </button>
-
-</section>
-
-
-<!-- ===================================================
-     PROCESSING
-     =================================================== -->
-
-<section
-  id="processingSection"
-  class="processing-section hidden"
->
-
-  <div class="processing-card">
-
-    <div class="processing-spinner"></div>
-
-    <div class="processing-content">
-
-      <span class="eyebrow">
-        FIDELIS AI
-      </span>
-
-      <h2 id="processingTitle">
-        Processing your media...
-      </h2>
-
-      <p id="processingText">
-        AI is enhancing your media
-        while preserving its original appearance.
-      </p>
-
-    </div>
-
-    <div class="progress-container">
+      <div id="mediaPreview"></div>
 
       <div
-        id="progressBar"
-        class="progress-bar"
+        id="fileInfo"
+        class="file-info"
       ></div>
 
-    </div>
+    </section>
 
-    <div
-      id="progressText"
-      class="progress-text"
+    <section
+      id="qualitySection"
+      class="card preview-wrap"
     >
-      0%
-    </div>
 
-  </div>
+      <div class="section-title">
+        Enhancement Quality
+      </div>
 
-</section>
+      <div class="quality-grid">
 
+        <div
+          class="quality-card active"
+          data-quality="standard"
+        >
+          <div class="quality-name">
+            Basic
+          </div>
 
-<!-- ===================================================
-     RESULT
-     =================================================== -->
+          <div class="quality-desc">
+            Balanced AI enhancement for everyday
+            photos.
+          </div>
 
-<section
-  id="resultSection"
-  class="result-section hidden"
->
+          <span class="quality-tag">
+            2× · FREE
+          </span>
+        </div>
 
-  <div class="section-header">
+        <div
+          class="quality-card"
+          data-quality="high"
+        >
+          <div class="quality-name">
+            High
+          </div>
 
-    <div>
+          <div class="quality-desc">
+            Stronger detail recovery and cleaner
+            output.
+          </div>
 
-      <span class="eyebrow">
-        RESULT
-      </span>
+          <span class="quality-tag">
+            2× · HIGH
+          </span>
+        </div>
 
-      <h2>
-        Enhanced Media
-      </h2>
+        <div
+          class="quality-card"
+          data-quality="ultra"
+        >
+          <div class="quality-name">
+            Ultra
+          </div>
 
-    </div>
+          <div class="quality-desc">
+            Maximum enhancement using the 4×
+            Real-ESRGAN model.
+          </div>
 
-  </div>
+          <span class="quality-tag">
+            4× · VVIP
+          </span>
+        </div>
 
+      </div>
 
-  <div
-    id="resultPreview"
-    class="result-preview"
-  ></div>
+      <button
+        id="enhanceButton"
+        class="enhance-button"
+        disabled
+      >
+        Enhance with AI
+      </button>
 
+      <div
+        id="status"
+        class="status"
+      >
 
-  <div class="result-actions">
+        <div class="status-row">
 
-    <button
-      type="button"
-      id="downloadButton"
-      class="primary-button"
+          <div class="status-dot"></div>
+
+          <div
+            id="statusText"
+            class="status-text"
+          >
+            Preparing AI...
+          </div>
+
+        </div>
+
+        <div class="progress">
+          <div
+            id="progressBar"
+            class="progress-bar"
+          ></div>
+        </div>
+
+      </div>
+
+      <div
+        id="errorBox"
+        class="error"
+      ></div>
+
+    </section>
+
+    <section
+      id="resultSection"
+      class="card result"
     >
-      Download Result
-    </button>
 
-    <button
-      type="button"
-      id="resetButton"
-      class="secondary-button"
-    >
-      Enhance Another
-    </button>
+      <div class="section-title">
+        AI Result
+      </div>
 
-  </div>
+      <div id="resultPreview"></div>
 
-</section>
+      <div
+        id="resultMeta"
+        class="result-meta"
+      ></div>
 
+      <a
+        id="downloadButton"
+        class="download-button"
+        href="#"
+        download="fidelis-enhanced.png"
+      >
+        Download Enhanced Image
+      </a>
 
-<!-- ===================================================
-     ERROR
-     =================================================== -->
+    </section>
 
-<div
-  id="errorMessage"
-  class="error-message hidden"
-  role="alert"
-></div>
+    <section class="card diagnostic">
 
+      <details>
 
-<!-- ===================================================
-     ONNX RUNTIME DIAGNOSTIC
-     =================================================== -->
+        <summary>
+          FIDELIS AI Diagnostics
+        </summary>
 
-<section
-  id="runtimeDiagnostic"
-  style="
-    margin:32px 0;
-    padding:20px;
-    border:1px solid rgba(167,139,250,.35);
-    border-radius:16px;
-    background:#09090f;
-    color:#e8e8f0;
-    font-family:monospace;
-    font-size:13px;
-    line-height:1.6;
-    overflow:hidden;
-  "
->
+        <div id="diagnosticOutput">
+          Initializing diagnostics...
+        </div>
 
-  <div
-    style="
-      font-size:15px;
-      font-weight:700;
-      margin-bottom:12px;
-      color:#ffffff;
-    "
-  >
-    FIDELIS ONNX RUNTIME TEST
-  </div>
+      </details>
 
-  <div
-    id="runtimeDiagnosticStatus"
-    style="margin-bottom:12px;"
-  >
-    ⏳ Starting runtime diagnostic...
-  </div>
+    </section>
 
-  <pre
-    id="runtimeDiagnosticOutput"
-    style="
-      margin:0;
-      white-space:pre-wrap;
-      word-break:break-word;
-      max-height:600px;
-      overflow:auto;
-    "
-  ></pre>
+    <footer>
+      FIDELIS · Enhance. Don't Change.
+    </footer>
 
-  <button
-    type="button"
-    id="runtimeDiagnosticButton"
-    style="
-      margin-top:16px;
-      padding:10px 14px;
-      border:1px solid rgba(167,139,250,.5);
-      border-radius:10px;
-      background:#12121c;
-      color:#ffffff;
-      cursor:pointer;
-      font-family:inherit;
-    "
-  >
-    Run Runtime Test Again
-  </button>
-
-</section>
+  </main>
 
 
-<!-- ===================================================
-     DIRECT ONNX DIAGNOSTIC
-     =================================================== -->
+  <!-- =========================================
+       CORE UI
+       ========================================= -->
 
-<section
-  id="directOnnxDiagnostic"
-  style="
-    margin:32px 0;
-    padding:20px;
-    border:1px solid rgba(52,211,153,.35);
-    border-radius:16px;
-    background:#09090f;
-    color:#e8e8f0;
-    font-family:monospace;
-    font-size:13px;
-    line-height:1.6;
-    overflow:hidden;
-  "
->
+  <script src="js/app.js"></script>
 
-  <div
-    style="
-      font-size:15px;
-      font-weight:700;
-      margin-bottom:12px;
-      color:#ffffff;
-    "
-  >
-    FIDELIS DIRECT ONNX TEST
-  </div>
 
-  <div
-    id="directOnnxStatus"
-    style="margin-bottom:12px;"
-  >
-    ⏳ Waiting for ONNX Runtime...
-  </div>
-
-  <pre
-    id="directOnnxOutput"
-    style="
-      margin:0;
-      white-space:pre-wrap;
-      word-break:break-word;
-      max-height:700px;
-      overflow:auto;
-    "
-  ></pre>
-
-  <button
-    type="button"
-    id="directOnnxButton"
-    style="
-      margin-top:16px;
-      padding:10px 14px;
-      border:1px solid rgba(52,211,153,.5);
-      border-radius:10px;
-      background:#12121c;
-      color:#ffffff;
-      cursor:pointer;
-      font-family:inherit;
-    "
-  >
-    Run Direct ONNX Test Again
-  </button>
-
-</section>
-
-  </main>  <!-- =====================================================
-       FOOTER
-       ===================================================== -->  <footer class="footer"><p>
-  FIDELIS AI
-</p>
-
-<span>
-  Enhance. Don't Change.
-</span>
-
-  </footer>  <!-- =====================================================
-       CORE APP
-       ===================================================== -->  <script src="js/app.js"></script>  <!-- =====================================================
+  <!-- =========================================
        AI CORE
-       ===================================================== -->  <script src="js/ai-engine.js"></script>  <script src="js/model-manager.js"></script>  <script src="js/ai-model-config.js"></script>  <script src="js/ai-models.js"></script>  <script src="js/ai-model-loader.js"></script>  <script src="js/ai-model-registry.js"></script>  <script src="js/ai-model-loader-v2.js"></script>  <!-- =====================================================
-       MODEL FETCH DIAGNOSTIC
-       ===================================================== -->  <script src="js/model-fetch-test.js"></script>  <!-- =====================================================
-       REAL-ESRGAN CONFIG
-       ===================================================== -->  <script src="js/ai-real-esrgan-config.js"></script>  <script src="js/ai-model-adapter.js"></script>  <script src="js/ai-model-sync.js"></script>  <script src="js/ai-model-bootstrap.js"></script>  <script src="js/ai-model-url.js"></script>  <script src="js/ai-model-health.js"></script>  <script src="js/ai-model-installer.js"></script>  <!-- =====================================================
-       ONNX RUNTIME
-       ===================================================== -->  <script src="js/ai-runtime.js"></script>  <!-- =====================================================
-       RUNTIME DIAGNOSTIC
-       ===================================================== -->  <script>
+       ========================================= -->
 
-  (function () {
+  <script src="js/ai-engine.js"></script>
 
-    "use strict";
+  <script src="js/model-manager.js"></script>
 
-    const statusEl =
-      document.getElementById(
-        "runtimeDiagnosticStatus"
-      );
+  <script src="js/ai-model-config.js"></script>
 
-    const outputEl =
-      document.getElementById(
-        "runtimeDiagnosticOutput"
-      );
+  <script src="js/ai-models.js"></script>
 
-    const buttonEl =
-      document.getElementById(
-        "runtimeDiagnosticButton"
-      );
+  <script src="js/ai-model-loader.js"></script>
+
+  <script src="js/ai-model-registry.js"></script>
+
+  <script src="js/ai-model-loader-v2.js"></script>
+
+  <script src="js/model-fetch-test.js"></script>
+
+  <script src="js/ai-real-esrgan-config.js"></script>
+
+  <script src="js/ai-model-adapter.js"></script>
+
+  <script src="js/ai-model-sync.js"></script>
+
+  <script src="js/ai-model-bootstrap.js"></script>
+
+  <script src="js/ai-model-url.js"></script>
+
+  <script src="js/ai-model-health.js"></script>
+
+  <script src="js/ai-model-installer.js"></script>
+
+  <script src="js/ai-runtime.js"></script>
+
+  <script src="js/direct-onnx-test.js"></script>
+
+  <script src="js/ai-inference.js"></script>
+
+  <!-- NEW DIRECT BRIDGE -->
+  <script src="js/ai-model-bridge.js"></script>
+
+  <script src="js/ai-tile-engine.js"></script>
+
+  <!-- NEW IMAGE PIPELINE -->
+  <script src="js/ai-image-pipeline.js"></script>
+
+  <!-- NEW ROUTER -->
+  <script src="js/ai-pipeline-router.js"></script>
+
+  <script src="js/ai-pipeline-test.js"></script>
+
+  <script src="js/ai-diagnostics.js"></script>
+
+  <script src="js/ai-model-live-test.js"></script>
+
+  <script src="js/face-guard.js"></script>
+
+  <script src="js/face-preservation.js"></script>
+
+  <script src="js/image-ai.js"></script>
+
+  <script src="js/image.js"></script>
+
+  <script src="js/video.js"></script>
+
+  <script src="js/storage.js"></script>
+
+  <script src="js/notifications.js"></script>
+
+  <script src="js/tier-manager.js"></script>
+
+  <script src="js/processing-engine.js"></script>
 
 
-    function write(message) {
+  <!-- =========================================
+       FIDELIS UI CONTROLLER
+       ========================================= -->
 
-      if (!outputEl) {
-        return;
-      }
+  <script>
+    (function () {
+      "use strict";
 
-      outputEl.textContent +=
-        message + "\n";
-    }
+      let selectedFile = null;
+      let selectedQuality = "standard";
 
+      const fileInput =
+        document.getElementById("fileInput");
 
-    function clear() {
+      const previewSection =
+        document.getElementById(
+          "previewSection"
+        );
 
-      if (outputEl) {
-        outputEl.textContent = "";
-      }
-    }
+      const qualitySection =
+        document.getElementById(
+          "qualitySection"
+        );
 
+      const mediaPreview =
+        document.getElementById(
+          "mediaPreview"
+        );
 
-    function setStatus(message) {
+      const fileInfo =
+        document.getElementById(
+          "fileInfo"
+        );
 
-      if (statusEl) {
-        statusEl.textContent =
-          message;
-      }
-    }
+      const enhanceButton =
+        document.getElementById(
+          "enhanceButton"
+        );
 
+      const status =
+        document.getElementById(
+          "status"
+        );
 
-    function safeString(value) {
+      const statusText =
+        document.getElementById(
+          "statusText"
+        );
 
-      try {
+      const progressBar =
+        document.getElementById(
+          "progressBar"
+        );
+
+      const errorBox =
+        document.getElementById(
+          "errorBox"
+        );
+
+      const resultSection =
+        document.getElementById(
+          "resultSection"
+        );
+
+      const resultPreview =
+        document.getElementById(
+          "resultPreview"
+        );
+
+      const resultMeta =
+        document.getElementById(
+          "resultMeta"
+        );
+
+      const downloadButton =
+        document.getElementById(
+          "downloadButton"
+        );
+
+      const diagnosticOutput =
+        document.getElementById(
+          "diagnosticOutput"
+        );
+
+      function setStatus(
+        text,
+        progress
+      ) {
+        status.classList.add(
+          "visible"
+        );
+
+        statusText.textContent =
+          text;
 
         if (
-          value === undefined
+          typeof progress ===
+          "number"
         ) {
-          return "undefined";
+          progressBar.style.width =
+            Math.max(
+              0,
+              Math.min(
+                100,
+                progress
+              )
+            ) + "%";
         }
-
-        if (
-          value === null
-        ) {
-          return "null";
-        }
-
-        if (
-          typeof value === "object"
-        ) {
-
-          return JSON.stringify(
-            value,
-            null,
-            2
-          );
-        }
-
-        return String(value);
-
-      } catch (_) {
-
-        return String(value);
-
       }
 
-    }
-
-
-    async function testRuntime() {
-
-      clear();
-
-      setStatus(
-        "⏳ Running ONNX Runtime diagnostic..."
-      );
-
-
-      write(
-        "========================================"
-      );
-
-      write(
-        "FIDELIS ONNX RUNTIME DIAGNOSTIC"
-      );
-
-      write(
-        "========================================"
-      );
-
-      write("");
-
-
-      /* =====================================
-         1 — BROWSER
-         ===================================== */
-
-      write(
-        "[1] BROWSER ENVIRONMENT"
-      );
-
-      write(
-        "User Agent: " +
-        navigator.userAgent
-      );
-
-      write(
-        "WebGPU API: " +
-        (
-          "gpu" in navigator
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"
-        )
-      );
-
-      write(
-        "WebGL API: " +
-        (
-          typeof WebGLRenderingContext !==
-          "undefined"
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"
-        )
-      );
-
-      write("");
-
-
-      /* =====================================
-         2 — FIDELIS RUNTIME
-         ===================================== */
-
-      write(
-        "[2] FIDELIS RUNTIME"
-      );
-
-      const runtime =
-        window.FidelisRuntime;
-
-
-      write(
-        "FidelisRuntime: " +
-        (
-          runtime
-            ? "LOADED"
-            : "NOT LOADED"
-        )
-      );
-
-
-      if (!runtime) {
-
-        write("");
-        write(
-          "❌ ai-runtime.js belum membuat " +
-          "window.FidelisRuntime."
+      function clearError() {
+        errorBox.textContent = "";
+        errorBox.classList.remove(
+          "visible"
         );
-
-        setStatus(
-          "❌ RUNTIME OBJECT NOT FOUND"
-        );
-
-        return;
       }
 
-
-      if (
-        typeof runtime.getStatus ===
-        "function"
+      function showError(
+        error
       ) {
-
-        try {
-
-          write(
-            "Runtime Status:"
-          );
-
-          write(
-            safeString(
-              runtime.getStatus()
-            )
-          );
-
-        } catch (error) {
-
-          write(
-            "Runtime Status Error: " +
-            error.message
-          );
-
-        }
-
-      }
-
-      write("");
-
-
-      /* =====================================
-         3 — ORT
-         ===================================== */
-
-      write(
-        "[3] ONNX RUNTIME LIBRARY"
-      );
-
-      const ort =
-        window.ort;
-
-
-      write(
-        "window.ort: " +
-        (
-          ort
-            ? "FOUND"
-            : "NOT FOUND"
-        )
-      );
-
-
-      if (!ort) {
-
-        write("");
-        write(
-          "⚠️ ONNX Runtime belum dimuat."
-        );
-
-      } else {
-
-        write(
-          "ORT object type: " +
-          typeof ort
-        );
-
-        write(
-          "ORT version: " +
-          (
-            ort.env &&
-            ort.env.versions &&
-            ort.env.versions.web
-              ? ort.env.versions.web
-              : "UNKNOWN"
-          )
-        );
-
-        write(
-          "InferenceSession: " +
-          (
-            typeof ort.InferenceSession ===
-            "function"
-              ? "AVAILABLE"
-              : "NOT AVAILABLE"
-          )
-        );
-
-        write(
-          "Tensor: " +
-          (
-            typeof ort.Tensor ===
-            "function"
-              ? "AVAILABLE"
-              : "NOT AVAILABLE"
-          )
-        );
-
-      }
-
-      write("");
-
-
-      /* =====================================
-         4 — BACKENDS
-         ===================================== */
-
-      write(
-        "[4] BACKENDS"
-      );
-
-
-      if (
-        typeof runtime.getAvailableBackends ===
-        "function"
-      ) {
-
-        try {
-
-          write(
-            "Available Backends:"
-          );
-
-          write(
-            safeString(
-              runtime.getAvailableBackends()
-            )
-          );
-
-        } catch (error) {
-
-          write(
-            "Backend detection error: " +
-            error.message
-          );
-
-        }
-
-      } else {
-
-        write(
-          "getAvailableBackends(): NOT AVAILABLE"
-        );
-
-      }
-
-      write("");
-
-
-      /* =====================================
-         5 — INIT
-         ===================================== */
-
-      write(
-        "[5] RUNTIME INITIALIZATION"
-      );
-
-
-      if (
-        typeof runtime.init !==
-        "function"
-      ) {
-
-        write(
-          "❌ runtime.init() tidak tersedia."
-        );
-
-        setStatus(
-          "❌ RUNTIME INIT FUNCTION MISSING"
-        );
-
-        return;
-      }
-
-
-      try {
-
-        write(
-          "Calling FidelisRuntime.init()..."
-        );
-
-
-        const initResult =
-          await runtime.init();
-
-
-        write(
-          "INIT RESULT:"
-        );
-
-        write(
-          safeString(initResult)
-        );
-
-
-        write(
-          "Active backend: " +
-          (
-            typeof runtime.getBackend ===
-            "function"
-              ? safeString(
-                  runtime.getBackend()
-                )
-              : "UNKNOWN"
-          )
-        );
-
-
-        write(
-          "ORT after init: " +
-          (
-            window.ort
-              ? "LOADED"
-              : "NOT LOADED"
-          )
-        );
-
-
-        if (window.ort) {
-
-          write(
-            "InferenceSession after init: " +
-            (
-              typeof window.ort.InferenceSession ===
-              "function"
-                ? "AVAILABLE"
-                : "NOT AVAILABLE"
-            )
-          );
-
-
-          write(
-            "Tensor after init: " +
-            (
-              typeof window.ort.Tensor ===
-              "function"
-                ? "AVAILABLE"
-                : "NOT AVAILABLE"
-            )
-          );
-
-        }
-
-
-        write("");
-
-        write(
-          "========================================"
-        );
-
-        write(
-          "RUNTIME TEST SELESAI"
-        );
-
-        write(
-          "========================================"
-        );
-
-
-        setStatus(
-          "✅ ONNX RUNTIME INITIALIZATION BERHASIL"
-        );
-
-
-      } catch (error) {
-
-        write("");
-
-        write(
-          "========================================"
-        );
-
-        write(
-          "❌ RUNTIME INITIALIZATION GAGAL"
-        );
-
-        write(
-          "========================================"
-        );
-
-        write(
-          "ERROR NAME: " +
-          (
-            error &&
-            error.name
-              ? error.name
-              : "UNKNOWN"
-          )
-        );
-
-        write(
-          "ERROR MESSAGE:"
-        );
-
-        write(
+        const message =
           error &&
           error.message
             ? error.message
-            : String(error)
+            : String(error);
+
+        errorBox.textContent =
+          "AI processing failed:\n" +
+          message;
+
+        errorBox.classList.add(
+          "visible"
         );
-
-
-        if (
-          error &&
-          error.stack
-        ) {
-
-          write("");
-
-          write(
-            "STACK:"
-          );
-
-          write(
-            error.stack
-          );
-
-        }
-
 
         setStatus(
-          "❌ ONNX RUNTIME INITIALIZATION FAILED"
+          "Processing failed",
+          0
         );
 
+        console.error(
+          "[FIDELIS UI]",
+          error
+        );
       }
 
-    }
+      function formatBytes(
+        bytes
+      ) {
+        if (
+          !Number.isFinite(bytes)
+        ) {
+          return "-";
+        }
 
+        if (
+          bytes < 1024
+        ) {
+          return bytes + " B";
+        }
 
-    window.FidelisRuntimeDiagnostic = {
-      run: testRuntime
-    };
+        if (
+          bytes < 1024 * 1024
+        ) {
+          return (
+            bytes / 1024
+          ).toFixed(1) +
+          " KB";
+        }
 
+        return (
+          bytes /
+          1024 /
+          1024
+        ).toFixed(2) +
+        " MB";
+      }
 
-    if (buttonEl) {
+      function previewFile(
+        file
+      ) {
+        mediaPreview.innerHTML = "";
 
-      buttonEl.addEventListener(
-        "click",
-        testRuntime
-      );
-
-    }
-
-
-    if (
-      document.readyState ===
-      "loading"
-    ) {
-
-      document.addEventListener(
-        "DOMContentLoaded",
-        function () {
-
-          setTimeout(
-            testRuntime,
-            800
+        const url =
+          URL.createObjectURL(
+            file
           );
 
-        },
-        { once: true }
+        const image =
+          document.createElement(
+            "img"
+          );
+
+        image.src = url;
+
+        image.alt =
+          "Original image";
+
+        mediaPreview.appendChild(
+          image
+        );
+
+        fileInfo.textContent =
+          file.name +
+          " · " +
+          formatBytes(
+            file.size
+          );
+
+        previewSection.style.display =
+          "block";
+
+        qualitySection.style.display =
+          "block";
+
+        enhanceButton.disabled =
+          false;
+      }
+
+      fileInput.addEventListener(
+        "change",
+        function () {
+          clearError();
+
+          const file =
+            fileInput.files &&
+            fileInput.files[0];
+
+          if (!file) {
+            return;
+          }
+
+          if (
+            !file.type.startsWith(
+              "image/"
+            )
+          ) {
+            showError(
+              new Error(
+                "File harus berupa gambar."
+              )
+            );
+
+            fileInput.value = "";
+            return;
+          }
+
+          selectedFile =
+            file;
+
+          previewFile(
+            file
+          );
+
+          resultSection.classList.remove(
+            "visible"
+          );
+
+          console.log(
+            "[FIDELIS UI] File selected:",
+            file.name
+          );
+        }
       );
 
-    } else {
+      document
+        .querySelectorAll(
+          ".quality-card"
+        )
+        .forEach(
+          function (card) {
+            card.addEventListener(
+              "click",
+              function () {
+                document
+                  .querySelectorAll(
+                    ".quality-card"
+                  )
+                  .forEach(
+                    function (item) {
+                      item.classList.remove(
+                        "active"
+                      );
+                    }
+                  );
 
-      setTimeout(
-        testRuntime,
-        800
-      );
+                card.classList.add(
+                  "active"
+                );
 
-    }
-
-  })();
-
-  </script>  <!-- =====================================================
-       DIRECT ONNX TEST
-       ===================================================== -->  <script src="js/direct-onnx-test.js"></script>  <!-- =====================================================
-       INFERENCE
-       ===================================================== -->  <script src="js/ai-inference.js"></script>  <script src="js/ai-model-bridge.js"></script>  <!-- =====================================================
-       IMAGE PROCESSING
-       ===================================================== -->  <script src="js/ai-tile-engine.js"></script>  <script src="js/ai-image-pipeline.js"></script>  <script src="js/ai-pipeline-router.js"></script>  <script src="js/ai-pipeline-test.js"></script>  <!-- =====================================================
-       DIAGNOSTICS
-       ===================================================== -->  <script src="js/ai-diagnostics.js"></script>  <script src="js/ai-model-live-test.js"></script>  <!-- =====================================================
-       FACE PRESERV
+                selectedQuality =
+                  card.dataset.
