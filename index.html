@@ -2,16 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <meta
-    name="theme-color"
-    content="#07070b"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>FIDELIS — Enhance. Don't Change.</title>
 
@@ -22,422 +13,416 @@
       padding: 0;
     }
 
-    :root {
-      --bg: #07070b;
-      --panel: #101017;
-      --panel-2: #15151e;
-      --border: rgba(255,255,255,.09);
-      --text: #f5f5f7;
-      --muted: #8e8e9a;
-      --accent: #a78bfa;
-      --accent-2: #7c3aed;
-      --success: #4ade80;
-      --danger: #f87171;
-    }
-
     body {
       min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
       background:
-        radial-gradient(
-          circle at 50% -10%,
-          rgba(124,58,237,.20),
-          transparent 40%
-        ),
-        var(--bg);
-      color: var(--text);
-      font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+        radial-gradient(circle at top, #1b1630 0%, #09090d 45%, #050507 100%);
+      color: #f5f5f7;
     }
 
     button,
-    label {
+    input {
       font: inherit;
     }
 
     .app {
-      width: min(100%, 1100px);
+      width: min(1100px, 100%);
       margin: auto;
-      padding: 24px 16px 60px;
+      padding: 24px 16px 50px;
     }
 
-    .header {
+    /* HEADER */
+
+    header {
       text-align: center;
-      padding: 32px 10px 28px;
+      padding: 30px 10px 25px;
     }
 
-    .brand {
-      font-size: clamp(34px, 9vw, 64px);
+    .logo {
+      font-size: clamp(34px, 8vw, 58px);
       font-weight: 900;
-      letter-spacing: .12em;
-      line-height: 1;
+      letter-spacing: 8px;
+      background: linear-gradient(90deg, #fff, #c9b8ff, #fff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
     .tagline {
-      margin-top: 12px;
-      color: var(--muted);
+      margin-top: 8px;
+      color: #aaa;
       font-size: 14px;
-      letter-spacing: .08em;
+      letter-spacing: 2px;
     }
 
-    .badge {
-      display: inline-flex;
-      margin-top: 18px;
-      padding: 7px 12px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--accent);
-      background: rgba(167,139,250,.07);
-      font-size: 12px;
+    .subtext {
+      margin-top: 14px;
+      color: #777;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* MODE */
+
+    .mode-switch {
+      display: flex;
+      gap: 10px;
+      margin: 20px auto;
+      max-width: 600px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 15px;
+      border: 1px solid #292733;
+      border-radius: 14px;
+      background: #111017;
+      color: #aaa;
+      cursor: pointer;
+      transition: .2s;
       font-weight: 700;
     }
 
-    .card {
-      background:
-        linear-gradient(
-          180deg,
-          rgba(255,255,255,.035),
-          rgba(255,255,255,.015)
-        ),
-        var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 20px;
-      margin-top: 16px;
-      box-shadow:
-        0 20px 60px rgba(0,0,0,.20);
+    .mode-btn.active {
+      background: #1d1830;
+      color: #fff;
+      border-color: #8c6cff;
+      box-shadow: 0 0 25px rgba(140,108,255,.15);
     }
 
-    .upload-zone {
-      min-height: 220px;
-      border: 1px dashed rgba(167,139,250,.35);
+    /* UPLOAD */
+
+    .upload-card {
+      border: 1px solid #292733;
+      background: rgba(14, 14, 20, .88);
+      border-radius: 22px;
+      padding: 25px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+    .drop-zone {
+      min-height: 270px;
+      border: 2px dashed #383443;
       border-radius: 18px;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 30px 18px;
-      background: rgba(167,139,250,.025);
+      cursor: pointer;
+      transition: .2s;
+      padding: 30px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: #9274ff;
+      background: rgba(146,116,255,.05);
     }
 
     .upload-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: rgba(167,139,250,.10);
-      color: var(--accent);
-      font-size: 28px;
-      margin-bottom: 16px;
+      font-size: 55px;
+      margin-bottom: 15px;
     }
 
-    .upload-title {
-      font-size: 18px;
-      font-weight: 800;
+    .drop-zone h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
     }
 
-    .upload-subtitle {
-      color: var(--muted);
+    .drop-zone p {
+      color: #777;
       font-size: 13px;
-      margin-top: 7px;
-      max-width: 430px;
+      line-height: 1.6;
     }
 
-    input[type="file"] {
+    .browse {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 11px 20px;
+      border-radius: 10px;
+      background: #fff;
+      color: #08080a;
+      font-weight: 800;
+    }
+
+    #fileInput {
       display: none;
     }
 
-    .primary-button {
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 48px;
+    /* FILE PREVIEW */
+
+    .file-preview {
+      display: none;
       margin-top: 20px;
-      padding: 0 24px;
-      border-radius: 13px;
-      border: 0;
-      cursor: pointer;
-      background:
-        linear-gradient(
-          135deg,
-          var(--accent),
-          var(--accent-2)
-        );
-      color: white;
-      font-weight: 800;
-      box-shadow:
-        0 12px 30px rgba(124,58,237,.25);
-      transition: .2s ease;
     }
 
-    .primary-button:hover {
-      transform: translateY(-1px);
+    .file-preview.active {
+      display: block;
     }
 
-    .primary-button:active {
-      transform: translateY(1px);
-    }
-
-    .section-title {
-      font-size: 16px;
-      font-weight: 800;
-      margin-bottom: 14px;
-    }
-
-    .preview-wrap {
-      display: none;
-    }
-
-    #mediaPreview {
-      width: 100%;
+    .preview-box {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #050507;
+      border: 1px solid #292733;
       min-height: 180px;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
-      border-radius: 16px;
-      background: #050508;
-      border: 1px solid var(--border);
     }
 
-    #mediaPreview img,
-    #mediaPreview video,
-    #mediaPreview canvas {
+    .preview-box img,
+    .preview-box video {
       display: block;
       max-width: 100%;
-      max-height: 560px;
+      max-height: 500px;
       object-fit: contain;
-      border-radius: 14px;
     }
 
     .file-info {
-      margin-top: 12px;
-      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      color: #888;
       font-size: 12px;
       word-break: break-word;
     }
 
-    .quality-grid {
-      display: grid;
-      grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .quality-card {
-      position: relative;
+    .remove-file {
+      border: 0;
+      background: transparent;
+      color: #ff7777;
       cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      border-radius: 16px;
-      padding: 17px;
-      transition: .2s ease;
-    }
-
-    .quality-card:hover {
-      border-color:
-        rgba(167,139,250,.35);
-    }
-
-    .quality-card.active {
-      border-color: var(--accent);
-      box-shadow:
-        0 0 0 1px var(--accent),
-        0 10px 30px rgba(124,58,237,.12);
-    }
-
-    .quality-name {
-      font-size: 15px;
-      font-weight: 800;
-    }
-
-    .quality-desc {
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.5;
-      margin-top: 6px;
-    }
-
-    .quality-tag {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 4px 7px;
-      border-radius: 6px;
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      font-size: 10px;
       font-weight: 700;
     }
 
-    .enhance-button {
-      width: 100%;
-      min-height: 54px;
-      margin-top: 18px;
-      border: 0;
-      border-radius: 15px;
-      cursor: pointer;
-      background:
-        linear-gradient(
-          135deg,
-          #8b5cf6,
-          #6d28d9
-        );
-      color: white;
-      font-weight: 900;
-      font-size: 15px;
-      letter-spacing: .02em;
+    /* QUALITY */
+
+    .section-title {
+      margin: 28px 0 12px;
+      font-size: 13px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 2px;
     }
 
-    .enhance-button:disabled {
+    .quality-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .quality {
+      position: relative;
+      padding: 18px;
+      border: 1px solid #292733;
+      border-radius: 15px;
+      background: #111017;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .quality:hover {
+      border-color: #5d4b91;
+    }
+
+    .quality.active {
+      border-color: #9274ff;
+      background: #19142a;
+      box-shadow: 0 0 25px rgba(146,116,255,.1);
+    }
+
+    .quality-name {
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .quality-desc {
+      color: #777;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .vvip {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: #27202f;
+      color: #d0b7ff;
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    /* ACTION */
+
+    .enhance-btn {
+      width: 100%;
+      margin-top: 22px;
+      padding: 17px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(90deg, #fff, #d8d0ff);
+      color: #09090b;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .enhance-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 30px rgba(255,255,255,.12);
+    }
+
+    .enhance-btn:disabled {
       opacity: .45;
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
-    .status {
+    /* STATUS */
+
+    .status-card {
       display: none;
-      margin-top: 18px;
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 16px;
-      background: rgba(255,255,255,.025);
+      margin-top: 20px;
+      padding: 18px;
+      border: 1px solid #292733;
+      border-radius: 16px;
+      background: #101016;
     }
 
-    .status.visible {
+    .status-card.active {
       display: block;
     }
 
     .status-row {
       display: flex;
-      align-items: center;
+      justify-content: space-between;
       gap: 10px;
-    }
-
-    .status-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow:
-        0 0 12px rgba(167,139,250,.7);
-    }
-
-    .status-text {
+      margin-bottom: 10px;
       font-size: 13px;
+    }
+
+    #statusText {
+      color: #aaa;
+    }
+
+    #progressText {
+      color: #bbaaff;
       font-weight: 700;
     }
 
     .progress {
-      height: 5px;
-      background: rgba(255,255,255,.07);
+      width: 100%;
+      height: 8px;
       border-radius: 99px;
-      margin-top: 14px;
+      background: #24222c;
       overflow: hidden;
     }
 
     .progress-bar {
-      width: 0%;
       height: 100%;
-      background: var(--accent);
-      transition: width .3s ease;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #8064ff, #c6b9ff);
+      transition: width .2s;
     }
+
+    /* RESULT */
 
     .result {
       display: none;
+      margin-top: 25px;
     }
 
-    .result.visible {
+    .result.active {
       display: block;
     }
 
-    .result-meta {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 12px;
-    }
-
-    .download-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      min-height: 48px;
-      margin-top: 16px;
-      border-radius: 13px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.05);
-      color: white;
-      text-decoration: none;
+    .result-title {
+      margin-bottom: 12px;
+      font-size: 18px;
       font-weight: 800;
     }
 
-    .error {
-      display: none;
-      margin-top: 14px;
-      padding: 13px;
-      border-radius: 12px;
-      background: rgba(248,113,113,.08);
-      border: 1px solid rgba(248,113,113,.20);
-      color: #fca5a5;
-      font-size: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-word;
+    .result-box {
+      overflow: hidden;
+      border: 1px solid #292733;
+      border-radius: 18px;
+      background: #050507;
+      text-align: center;
     }
 
-    .error.visible {
+    .result-box img,
+    .result-box video {
+      max-width: 100%;
+      max-height: 700px;
       display: block;
+      margin: auto;
     }
 
-    .diagnostic {
-      margin-top: 16px;
-    }
-
-    .diagnostic summary {
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    #diagnosticOutput {
+    .download-btn {
+      width: 100%;
       margin-top: 12px;
       padding: 14px;
+      border: 1px solid #393443;
       border-radius: 12px;
-      background: #050508;
-      border: 1px solid var(--border);
-      color: #a7f3d0;
-      font-family: monospace;
-      font-size: 11px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      overflow-x: auto;
+      background: #15131c;
+      color: white;
+      cursor: pointer;
+      font-weight: 800;
     }
+
+    .download-btn:hover {
+      background: #201c2c;
+    }
+
+    /* FOOTER */
 
     footer {
       text-align: center;
-      color: #555560;
+      margin-top: 50px;
+      color: #555;
       font-size: 11px;
-      padding: 30px 10px 0;
+      line-height: 1.8;
     }
 
-    @media (max-width: 680px) {
+    /* MOBILE */
+
+    @media (max-width: 650px) {
+      .app {
+        padding: 15px 12px 35px;
+      }
+
       .quality-grid {
         grid-template-columns: 1fr;
       }
 
-      .app {
-        padding-left: 12px;
-        padding-right: 12px;
+      .upload-card {
+        padding: 15px;
       }
 
-      .card {
-        padding: 15px;
+      .drop-zone {
+        min-height: 230px;
+      }
+
+      .mode-switch {
+        gap: 7px;
+      }
+
+      .mode-btn {
+        padding: 13px 8px;
+        font-size: 12px;
+      }
+
+      .file-info {
+        flex-direction: column;
       }
     }
   </style>
@@ -445,604 +430,771 @@
 
 <body>
 
-  <main class="app">
+<div class="app">
 
-    <header class="header">
-      <div class="brand">FIDELIS</div>
+  <header>
+    <div class="logo">FIDELIS</div>
+    <div class="tagline">ENHANCE. DON'T CHANGE.</div>
+    <div class="subtext">
+      AI enhancement designed to improve detail, sharpness and resolution<br>
+      while preserving the original appearance.
+    </div>
+  </header>
 
-      <div class="tagline">
-        Enhance. Don't Change.
-      </div>
+  <!-- MODE -->
 
-      <div class="badge">
-        REAL AI · REAL-ESRGAN · WEBGPU
-      </div>
-    </header>
+  <div class="mode-switch">
 
-    <section class="card">
+    <button
+      id="imageMode"
+      class="mode-btn active"
+      type="button">
+      🖼️ IMAGE
+    </button>
 
-      <div class="upload-zone">
+    <button
+      id="videoMode"
+      class="mode-btn"
+      type="button">
+      🎥 VIDEO
+    </button>
 
-        <div class="upload-icon">
-          ↑
+  </div>
+
+  <!-- UPLOAD -->
+
+  <section class="upload-card">
+
+    <div
+      id="dropZone"
+      class="drop-zone">
+
+      <div>
+
+        <div
+          id="uploadIcon"
+          class="upload-icon">
+          🖼️
         </div>
 
-        <div class="upload-title">
-          Enhance your image
-        </div>
+        <h2 id="uploadTitle">
+          Upload your image
+        </h2>
 
-        <div class="upload-subtitle">
-          Upload an image and FIDELIS will enhance
-          resolution, sharpness and detail while
-          preserving the original appearance.
-        </div>
+        <p id="uploadDescription">
+          JPG, JPEG, PNG, WEBP<br>
+          Drag & drop or select a file
+        </p>
 
-        <input
-          id="fileInput"
-          type="file"
-          accept="image/*"
-        >
-
-        <label
-          id="uploadButton"
-          class="primary-button"
-          for="fileInput"
-        >
+        <span class="browse">
           Choose File
-        </label>
+        </span>
 
       </div>
 
-    </section>
+    </div>
 
-    <section
-      id="previewSection"
-      class="card preview-wrap"
-    >
+    <input
+      id="fileInput"
+      type="file"
+      accept="image/*">
 
-      <div class="section-title">
-        Original
-      </div>
+    <!-- PREVIEW -->
 
-      <div id="mediaPreview"></div>
+    <div
+      id="filePreview"
+      class="file-preview">
 
       <div
-        id="fileInfo"
-        class="file-info"
-      ></div>
-
-    </section>
-
-    <section
-      id="qualitySection"
-      class="card preview-wrap"
-    >
-
-      <div class="section-title">
-        Enhancement Quality
+        id="previewBox"
+        class="preview-box">
       </div>
 
-      <div class="quality-grid">
+      <div class="file-info">
+
+        <span id="fileName">
+          —
+        </span>
+
+        <button
+          id="removeFile"
+          class="remove-file"
+          type="button">
+          Remove
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- QUALITY -->
+
+    <div class="section-title">
+      Enhancement Quality
+    </div>
+
+    <div class="quality-grid">
+
+      <div
+        class="quality active"
+        data-quality="standard">
+
+        <div class="quality-name">
+          FIDELIS Basic
+        </div>
+
+        <div class="quality-desc">
+          Fast AI enhancement<br>
+          2× resolution
+        </div>
+
+      </div>
+
+      <div
+        class="quality"
+        data-quality="high">
+
+        <div class="quality-name">
+          FIDELIS High
+        </div>
+
+        <div class="quality-desc">
+          Higher detail preservation<br>
+          2× resolution
+        </div>
+
+      </div>
+
+      <div
+        class="quality"
+        data-quality="ultra">
+
+        <span class="vvip">
+          VVIP
+        </span>
+
+        <div class="quality-name">
+          FIDELIS Ultra
+        </div>
+
+        <div class="quality-desc">
+          Maximum enhancement<br>
+          4× resolution
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ACTION -->
+
+    <button
+      id="enhanceButton"
+      class="enhance-btn"
+      type="button"
+      disabled>
+
+      ✨ Enhance with AI
+
+    </button>
+
+    <!-- STATUS -->
+
+    <div
+      id="statusCard"
+      class="status-card">
+
+      <div class="status-row">
+
+        <span id="statusText">
+          Preparing AI...
+        </span>
+
+        <span id="progressText">
+          0%
+        </span>
+
+      </div>
+
+      <div class="progress">
 
         <div
-          class="quality-card active"
-          data-quality="standard"
-        >
-          <div class="quality-name">
-            Basic
-          </div>
-
-          <div class="quality-desc">
-            Balanced AI enhancement for everyday
-            photos.
-          </div>
-
-          <span class="quality-tag">
-            2× · FREE
-          </span>
-        </div>
-
-        <div
-          class="quality-card"
-          data-quality="high"
-        >
-          <div class="quality-name">
-            High
-          </div>
-
-          <div class="quality-desc">
-            Stronger detail recovery and cleaner
-            output.
-          </div>
-
-          <span class="quality-tag">
-            2× · HIGH
-          </span>
-        </div>
-
-        <div
-          class="quality-card"
-          data-quality="ultra"
-        >
-          <div class="quality-name">
-            Ultra
-          </div>
-
-          <div class="quality-desc">
-            Maximum enhancement using the 4×
-            Real-ESRGAN model.
-          </div>
-
-          <span class="quality-tag">
-            4× · VVIP
-          </span>
+          id="progressBar"
+          class="progress-bar">
         </div>
 
       </div>
 
-      <button
-        id="enhanceButton"
-        class="enhance-button"
-        disabled
-      >
-        Enhance with AI
-      </button>
+    </div>
 
-      <div
-        id="status"
-        class="status"
-      >
+  </section>
 
-        <div class="status-row">
+  <!-- RESULT -->
 
-          <div class="status-dot"></div>
+  <section
+    id="resultSection"
+    class="result">
 
-          <div
-            id="statusText"
-            class="status-text"
-          >
-            Preparing AI...
-          </div>
+    <div class="result-title">
+      ✨ Enhanced Result
+    </div>
 
-        </div>
+    <div
+      id="resultBox"
+      class="result-box">
+    </div>
 
-        <div class="progress">
-          <div
-            id="progressBar"
-            class="progress-bar"
-          ></div>
-        </div>
+    <button
+      id="downloadButton"
+      class="download-btn"
+      type="button">
 
-      </div>
+      ⬇️ Download Result
 
-      <div
-        id="errorBox"
-        class="error"
-      ></div>
+    </button>
 
-    </section>
+  </section>
 
-    <section
-      id="resultSection"
-      class="card result"
-    >
+  <footer>
+    FIDELIS © 2026<br>
+    Enhance. Don't Change.
+  </footer>
 
-      <div class="section-title">
-        AI Result
-      </div>
+</div>
 
-      <div id="resultPreview"></div>
+<script>
 
-      <div
-        id="resultMeta"
-        class="result-meta"
-      ></div>
+(function () {
 
-      <a
-        id="downloadButton"
-        class="download-button"
-        href="#"
-        download="fidelis-enhanced.png"
-      >
-        Download Enhanced Image
-      </a>
+  "use strict";
 
-    </section>
+  let selectedFile = null;
+  let selectedMode = "image";
+  let selectedQuality = "standard";
+  let resultBlob = null;
+  let resultFileName = "fidelis-enhanced";
 
-    <section class="card diagnostic">
+  const imageMode =
+    document.getElementById("imageMode");
 
-      <details>
+  const videoMode =
+    document.getElementById("videoMode");
 
-        <summary>
-          FIDELIS AI Diagnostics
-        </summary>
+  const dropZone =
+    document.getElementById("dropZone");
 
-        <div id="diagnosticOutput">
-          Initializing diagnostics...
-        </div>
+  const fileInput =
+    document.getElementById("fileInput");
 
-      </details>
+  const uploadIcon =
+    document.getElementById("uploadIcon");
 
-    </section>
+  const uploadTitle =
+    document.getElementById("uploadTitle");
 
-    <footer>
-      FIDELIS · Enhance. Don't Change.
-    </footer>
+  const uploadDescription =
+    document.getElementById("uploadDescription");
 
-  </main>
+  const filePreview =
+    document.getElementById("filePreview");
 
+  const previewBox =
+    document.getElementById("previewBox");
 
-  <!-- =========================================
-       CORE UI
-       ========================================= -->
+  const fileName =
+    document.getElementById("fileName");
 
-  <script src="js/app.js"></script>
+  const removeFile =
+    document.getElementById("removeFile");
 
+  const enhanceButton =
+    document.getElementById("enhanceButton");
 
-  <!-- =========================================
-       AI CORE
-       ========================================= -->
+  const statusCard =
+    document.getElementById("statusCard");
 
-  <script src="js/ai-engine.js"></script>
+  const statusText =
+    document.getElementById("statusText");
 
-  <script src="js/model-manager.js"></script>
+  const progressText =
+    document.getElementById("progressText");
 
-  <script src="js/ai-model-config.js"></script>
+  const progressBar =
+    document.getElementById("progressBar");
 
-  <script src="js/ai-models.js"></script>
+  const resultSection =
+    document.getElementById("resultSection");
 
-  <script src="js/ai-model-loader.js"></script>
+  const resultBox =
+    document.getElementById("resultBox");
 
-  <script src="js/ai-model-registry.js"></script>
+  const downloadButton =
+    document.getElementById("downloadButton");
 
-  <script src="js/ai-model-loader-v2.js"></script>
 
-  <script src="js/model-fetch-test.js"></script>
+  /* =========================
+     MODE
+  ========================= */
 
-  <script src="js/ai-real-esrgan-config.js"></script>
+  function setMode(mode) {
 
-  <script src="js/ai-model-adapter.js"></script>
+    selectedMode = mode;
 
-  <script src="js/ai-model-sync.js"></script>
+    selectedFile = null;
 
-  <script src="js/ai-model-bootstrap.js"></script>
+    fileInput.value = "";
 
-  <script src="js/ai-model-url.js"></script>
+    filePreview.classList.remove("active");
 
-  <script src="js/ai-model-health.js"></script>
+    previewBox.innerHTML = "";
 
-  <script src="js/ai-model-installer.js"></script>
+    resultSection.classList.remove("active");
 
-  <script src="js/ai-runtime.js"></script>
+    resultBox.innerHTML = "";
 
-  <script src="js/direct-onnx-test.js"></script>
+    resultBlob = null;
 
-  <script src="js/ai-inference.js"></script>
+    if (mode === "image") {
 
-  <!-- NEW DIRECT BRIDGE -->
-  <script src="js/ai-model-bridge.js"></script>
+      imageMode.classList.add("active");
+      videoMode.classList.remove("active");
 
-  <script src="js/ai-tile-engine.js"></script>
+      uploadIcon.textContent = "🖼️";
 
-  <!-- NEW IMAGE PIPELINE -->
-  <script src="js/ai-image-pipeline.js"></script>
+      uploadTitle.textContent =
+        "Upload your image";
 
-  <!-- NEW ROUTER -->
-  <script src="js/ai-pipeline-router.js"></script>
+      uploadDescription.innerHTML =
+        "JPG, JPEG, PNG, WEBP<br>Drag & drop or select a file";
 
-  <script src="js/ai-pipeline-test.js"></script>
+      fileInput.accept =
+        "image/*";
 
-  <script src="js/ai-diagnostics.js"></script>
+    } else {
 
-  <script src="js/ai-model-live-test.js"></script>
+      imageMode.classList.remove("active");
+      videoMode.classList.add("active");
 
-  <script src="js/face-guard.js"></script>
+      uploadIcon.textContent = "🎥";
 
-  <script src="js/face-preservation.js"></script>
+      uploadTitle.textContent =
+        "Upload your video";
 
-  <script src="js/image-ai.js"></script>
+      uploadDescription.innerHTML =
+        "MP4, WEBM, MOV<br>Drag & drop or select a video";
 
-  <script src="js/image.js"></script>
+      fileInput.accept =
+        "video/*";
 
-  <script src="js/video.js"></script>
+    }
 
-  <script src="js/storage.js"></script>
+    updateButton();
 
-  <script src="js/notifications.js"></script>
+  }
 
-  <script src="js/tier-manager.js"></script>
 
-  <script src="js/processing-engine.js"></script>
+  imageMode.addEventListener(
+    "click",
+    function () {
+      setMode("image");
+    }
+  );
 
 
-  <!-- =========================================
-       FIDELIS UI CONTROLLER
-       ========================================= -->
+  videoMode.addEventListener(
+    "click",
+    function () {
+      setMode("video");
+    }
+  );
 
-  <script>
-    (function () {
-      "use strict";
 
-      let selectedFile = null;
-      let selectedQuality = "standard";
+  /* =========================
+     FILE PICKER
+  ========================= */
 
-      const fileInput =
-        document.getElementById("fileInput");
+  dropZone.addEventListener(
+    "click",
+    function () {
+      fileInput.click();
+    }
+  );
 
-      const previewSection =
-        document.getElementById(
-          "previewSection"
-        );
 
-      const qualitySection =
-        document.getElementById(
-          "qualitySection"
-        );
+  fileInput.addEventListener(
+    "change",
+    function () {
 
-      const mediaPreview =
-        document.getElementById(
-          "mediaPreview"
-        );
-
-      const fileInfo =
-        document.getElementById(
-          "fileInfo"
-        );
-
-      const enhanceButton =
-        document.getElementById(
-          "enhanceButton"
-        );
-
-      const status =
-        document.getElementById(
-          "status"
-        );
-
-      const statusText =
-        document.getElementById(
-          "statusText"
-        );
-
-      const progressBar =
-        document.getElementById(
-          "progressBar"
-        );
-
-      const errorBox =
-        document.getElementById(
-          "errorBox"
-        );
-
-      const resultSection =
-        document.getElementById(
-          "resultSection"
-        );
-
-      const resultPreview =
-        document.getElementById(
-          "resultPreview"
-        );
-
-      const resultMeta =
-        document.getElementById(
-          "resultMeta"
-        );
-
-      const downloadButton =
-        document.getElementById(
-          "downloadButton"
-        );
-
-      const diagnosticOutput =
-        document.getElementById(
-          "diagnosticOutput"
-        );
-
-      function setStatus(
-        text,
-        progress
-      ) {
-        status.classList.add(
-          "visible"
-        );
-
-        statusText.textContent =
-          text;
-
-        if (
-          typeof progress ===
-          "number"
-        ) {
-          progressBar.style.width =
-            Math.max(
-              0,
-              Math.min(
-                100,
-                progress
-              )
-            ) + "%";
-        }
+      if (!this.files || !this.files.length) {
+        return;
       }
 
-      function clearError() {
-        errorBox.textContent = "";
-        errorBox.classList.remove(
-          "visible"
-        );
+      handleFile(this.files[0]);
+
+    }
+  );
+
+
+  /* =========================
+     DRAG & DROP
+  ========================= */
+
+  dropZone.addEventListener(
+    "dragover",
+    function (event) {
+
+      event.preventDefault();
+
+      dropZone.classList.add(
+        "dragover"
+      );
+
+    }
+  );
+
+
+  dropZone.addEventListener(
+    "dragleave",
+    function () {
+
+      dropZone.classList.remove(
+        "dragover"
+      );
+
+    }
+  );
+
+
+  dropZone.addEventListener(
+    "drop",
+    function (event) {
+
+      event.preventDefault();
+
+      dropZone.classList.remove(
+        "dragover"
+      );
+
+      const file =
+        event.dataTransfer.files[0];
+
+      if (file) {
+        handleFile(file);
       }
 
-      function showError(
-        error
-      ) {
-        const message =
-          error &&
-          error.message
-            ? error.message
-            : String(error);
+    }
+  );
 
-        errorBox.textContent =
-          "AI processing failed:\n" +
-          message;
 
-        errorBox.classList.add(
-          "visible"
+  /* =========================
+     HANDLE FILE
+  ========================= */
+
+  function handleFile(file) {
+
+    if (selectedMode === "image") {
+
+      if (!file.type.startsWith("image/")) {
+
+        alert(
+          "Please select an image file."
         );
 
-        setStatus(
-          "Processing failed",
-          0
-        );
-
-        console.error(
-          "[FIDELIS UI]",
-          error
-        );
+        return;
       }
 
-      function formatBytes(
-        bytes
-      ) {
-        if (
-          !Number.isFinite(bytes)
-        ) {
-          return "-";
-        }
+    } else {
 
-        if (
-          bytes < 1024
-        ) {
-          return bytes + " B";
-        }
+      if (!file.type.startsWith("video/")) {
 
-        if (
-          bytes < 1024 * 1024
-        ) {
-          return (
-            bytes / 1024
-          ).toFixed(1) +
-          " KB";
-        }
-
-        return (
-          bytes /
-          1024 /
-          1024
-        ).toFixed(2) +
-        " MB";
-      }
-
-      function previewFile(
-        file
-      ) {
-        mediaPreview.innerHTML = "";
-
-        const url =
-          URL.createObjectURL(
-            file
-          );
-
-        const image =
-          document.createElement(
-            "img"
-          );
-
-        image.src = url;
-
-        image.alt =
-          "Original image";
-
-        mediaPreview.appendChild(
-          image
+        alert(
+          "Please select a video file."
         );
 
-        fileInfo.textContent =
-          file.name +
-          " · " +
-          formatBytes(
-            file.size
-          );
-
-        previewSection.style.display =
-          "block";
-
-        qualitySection.style.display =
-          "block";
-
-        enhanceButton.disabled =
-          false;
+        return;
       }
 
-      fileInput.addEventListener(
-        "change",
+    }
+
+    selectedFile = file;
+
+    fileName.textContent =
+      file.name;
+
+    previewBox.innerHTML = "";
+
+    const objectURL =
+      URL.createObjectURL(file);
+
+    if (selectedMode === "image") {
+
+      const img =
+        document.createElement("img");
+
+      img.src = objectURL;
+
+      img.alt =
+        "FIDELIS image preview";
+
+      previewBox.appendChild(img);
+
+      resultFileName =
+        file.name
+          .replace(/\.[^/.]+$/, "")
+          + "-fidelis.png";
+
+    } else {
+
+      const video =
+        document.createElement("video");
+
+      video.src = objectURL;
+
+      video.controls = true;
+
+      video.playsInline = true;
+
+      previewBox.appendChild(video);
+
+      resultFileName =
+        file.name
+          .replace(/\.[^/.]+$/, "")
+          + "-fidelis.mp4";
+
+    }
+
+    filePreview.classList.add(
+      "active"
+    );
+
+    resultSection.classList.remove(
+      "active"
+    );
+
+    updateButton();
+
+  }
+
+
+  /* =========================
+     REMOVE
+  ========================= */
+
+  removeFile.addEventListener(
+    "click",
+    function (event) {
+
+      event.stopPropagation();
+
+      selectedFile = null;
+
+      fileInput.value = "";
+
+      filePreview.classList.remove(
+        "active"
+      );
+
+      previewBox.innerHTML = "";
+
+      resultSection.classList.remove(
+        "active"
+      );
+
+      resultBox.innerHTML = "";
+
+      resultBlob = null;
+
+      updateButton();
+
+    }
+  );
+
+
+  /* =========================
+     QUALITY
+  ========================= */
+
+  document
+    .querySelectorAll(".quality")
+    .forEach(function (card) {
+
+      card.addEventListener(
+        "click",
         function () {
-          clearError();
 
-          const file =
-            fileInput.files &&
-            fileInput.files[0];
+          selectedQuality =
+            card.dataset.quality;
 
-          if (!file) {
-            return;
-          }
+          document
+            .querySelectorAll(".quality")
+            .forEach(function (item) {
 
-          if (
-            !file.type.startsWith(
-              "image/"
-            )
-          ) {
-            showError(
-              new Error(
-                "File harus berupa gambar."
-              )
-            );
+              item.classList.remove(
+                "active"
+              );
 
-            fileInput.value = "";
-            return;
-          }
+            });
 
-          selectedFile =
-            file;
-
-          previewFile(
-            file
+          card.classList.add(
+            "active"
           );
 
-          resultSection.classList.remove(
-            "visible"
-          );
-
-          console.log(
-            "[FIDELIS UI] File selected:",
-            file.name
-          );
         }
       );
 
-      document
-        .querySelectorAll(
-          ".quality-card"
-        )
-        .forEach(
-          function (card) {
-            card.addEventListener(
-              "click",
-              function () {
-                document
-                  .querySelectorAll(
-                    ".quality-card"
-                  )
-                  .forEach(
-                    function (item) {
-                      item.classList.remove(
-                        "active"
-                      );
-                    }
-                  );
+    });
 
-                card.classList.add(
-                  "active"
+
+  /* =========================
+     BUTTON
+  ========================= */
+
+  function updateButton() {
+
+    enhanceButton.disabled =
+      !selectedFile;
+
+  }
+
+
+  /* =========================
+     STATUS
+  ========================= */
+
+  function setStatus(
+    text,
+    progress
+  ) {
+
+    statusCard.classList.add(
+      "active"
+    );
+
+    statusText.textContent =
+      text;
+
+    const value =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(progress) || 0
+        )
+      );
+
+    progressText.textContent =
+      Math.round(value) + "%";
+
+    progressBar.style.width =
+      value + "%";
+
+  }
+
+
+  /* =========================
+     AI IMAGE
+  ========================= */
+
+  async function processImage() {
+
+    if (
+      !window.FidelisPipelineRouter ||
+      typeof window.FidelisPipelineRouter.processImage !== "function"
+    ) {
+
+      throw new Error(
+        "FIDELIS AI image pipeline belum tersedia."
+      );
+
+    }
+
+    setStatus(
+      "Loading AI model...",
+      5
+    );
+
+    const result =
+      await window.FidelisPipelineRouter.processImage(
+        selectedFile,
+        selectedQuality,
+        {
+
+          onProgress:
+            function (value) {
+
+              if (
+                typeof value === "number"
+              ) {
+
+                setStatus(
+                  "Enhancing image with AI...",
+                  10 + value * 80
                 );
 
-                selectedQuality =
-                  card.dataset.
+              }
+
+            }
+
+        }
+      );
+
+    if (
+      !result ||
+      !result.canvas ||
+      result.aiProcessed !== true
+    ) {
+
+      throw new Error(
+        "AI enhancement tidak menghasilkan output yang valid."
+      );
+
+    }
+
+    return result;
+
+  }
+
+
+  /* =========================
+     ENHANCE
+  ========================= */
+
+  enhanceButton.addEventListener(
+    "click",
+    async function () {
+
+      if (!selectedFile) {
+        return;
+      }
+
+      enhanceButton.disabled = true;
+
+      resultSection.classList.remove(
+        "active"
+      );
+
+      resultBox.innerHTML = "";
+
+      try {
+
+        if (selectedMode === "image") {
+
+          setStatus(
+            "Starting FIDELIS AI...",
+            2
+          );
+
+          const result =
+            await processImage();
+
+          setStatus(
+            "AI enhancement complete.",
+            100
+          );
+
+          resultBox.innerHTML = "";
+
+          const canvas =
+            result.canvas;
+
+          c
