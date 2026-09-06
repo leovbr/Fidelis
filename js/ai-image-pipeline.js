@@ -1,8 +1,21 @@
 (function () {
   "use strict";
 
-  const sessions = new Map();
-  const loading = new Map();
+  /*
+   * FIDELIS AI IMAGE PIPELINE
+   *
+   * Flow:
+   * ImageData
+   *   ↓
+   * Model Bridge
+   *   ↓
+   * Real-ESRGAN ONNX
+   *   ↓
+   * Canvas
+   */
+
+  let activeQuality = "standard";
+  let processing = false;
 
   function normalizeQuality(quality) {
     const q = String(
@@ -41,848 +54,493 @@
   }
 
 
-  function getModel(quality) {
-    const q =
-      normalizeQuality(quality);
-
-    let model = null;
-
-
+  function getBridge() {
     if (
-      window.FidelisRealESRGAN &&
-      typeof window.FidelisRealESRGAN.get ===
-        "function"
-    ) {
-      model =
-        window.FidelisRealESRGAN.get(q);
-    }
-
-
-    if (
-      !model &&
-      window.FidelisModelRegistry &&
-      typeof window.FidelisModelRegistry.get ===
-        "function"
-    ) {
-      model =
-        window.FidelisModelRegistry.get(q);
-    }
-
-
-    if (
-      !model &&
-      window.FidelisAIModelConfig &&
-      typeof window.FidelisAIModelConfig.get ===
-        "function"
-    ) {
-      model =
-        window.FidelisAIModelConfig.get(q);
-    }
-
-
-    if (!model) {
-      throw new Error(
-        `Model ${q} tidak ditemukan.`
-      );
-    }
-
-
-    return {
-      ...model,
-      quality: q,
-      scale:
-        Number(
-          model.scale || 2
-        )
-    };
-  }
-
-
-  function getModelURL(quality) {
-    const model =
-      getModel(quality);
-
-    if (model.url) {
-      return model.url;
-    }
-
-
-    if (
-      window.FidelisModelURL &&
-      typeof window.FidelisModelURL.get ===
-        "function"
-    ) {
-      const url =
-        window.FidelisModelURL.get(
-          quality
-        );
-
-      if (url) {
-        return url;
-      }
-    }
-
-
-    if (
-      window.FidelisModelRegistry &&
-      typeof window.FidelisModelRegistry.getURL ===
-        "function"
-    ) {
-      const url =
-        window.FidelisModelRegistry.getURL(
-          quality
-        );
-
-      if (url) {
-        return url;
-      }
-    }
-
-
-    return null;
-  }
-
-
-  function checkTier(model) {
-    if (
-      !model ||
-      model.tier !== "vvip"
-    ) {
-      return true;
-    }
-
-
-    if (
-      window.FidelisTier &&
-      typeof window.FidelisTier.canUse ===
-        "function"
-    ) {
-      return !!window.FidelisTier.canUse(
-        "ultra"
-      );
-    }
-
-
-    if (
-      window.FidelisTierManager &&
-      typeof window.FidelisTierManager.canUse ===
-        "function"
-    ) {
-      return !!window.FidelisTierManager.canUse(
-        "ultra"
-      );
-    }
-
-
-    /*
-     * Untuk development/testing,
-     * jangan blok Standard/High.
-     */
-    return true;
-  }
-
-
-  async function initRuntime() {
-    if (
-      !window.FidelisRuntime
+      !window.FidelisAIModelBridge
     ) {
       throw new Error(
-        "FidelisRuntime tidak tersedia."
+        "FidelisAIModelBridge belum tersedia."
       );
     }
 
-
     if (
-      typeof window.FidelisRuntime.init !==
+      typeof window.FidelisAIModelBridge.run !==
       "function"
     ) {
       throw new Error(
-        "FidelisRuntime.init tidak tersedia."
+        "FidelisAIModelBridge.run tidak tersedia."
       );
     }
 
-
-    return await window.FidelisRuntime.init();
+    return window.FidelisAIModelBridge;
   }
 
 
-  async function loadBinary(
-    quality,
-    options = {}
-  ) {
-    const q =
-      normalizeQuality(quality);
+  function getModel(quality) {
+    const bridge =
+      getBridge();
 
-
-    /*
-     * Prefer V2 loader.
-     */
     if (
-      window.FidelisModelLoaderV2 &&
-      typeof window.FidelisModelLoaderV2.load ===
-        "function"
+      typeof bridge.getModel !==
+      "function"
     ) {
-      return await window.FidelisModelLoaderV2.load(
-        q,
-        {
-          onProgress:
-            options.onProgress,
-
-          signal:
-            options.signal
-        }
-      );
-    }
-
-
-    /*
-     * Legacy loader.
-     */
-    if (
-      window.FidelisModelLoader &&
-      typeof window.FidelisModelLoader.load ===
-        "function"
-    ) {
-      return await window.FidelisModelLoader.load(
-        q,
-        {
-          onProgress:
-            options.onProgress,
-
-          signal:
-            options.signal
-        }
-      );
-    }
-
-
-    /*
-     * Last-resort direct fetch.
-     */
-    const url =
-      getModelURL(q);
-
-
-    if (!url) {
       throw new Error(
-        `URL model ${q} belum dikonfigurasi.`
+        "FidelisAIModelBridge.getModel tidak tersedia."
       );
     }
 
-
-    const response =
-      await fetch(
-        url,
-        {
-          cache:
-            "force-cache",
-
-          signal:
-            options.signal
-        }
-      );
-
-
-    if (!response.ok) {
-      throw new Error(
-        `Model request gagal: HTTP ${response.status}`
-      );
-    }
-
-
-    return await response.arrayBuffer();
+    return bridge.getModel(
+      normalizeQuality(
+        quality
+      )
+    );
   }
 
 
-  async function createSession(
+  async function ensureReady(
     quality = "standard",
     options = {}
   ) {
     const q =
-      normalizeQuality(quality);
+      normalizeQuality(
+        quality
+      );
 
+    const bridge =
+      getBridge();
 
     /*
-     * Return existing session.
+     * If session already exists,
+     * don't download/load again.
      */
     if (
-      sessions.has(q)
+      typeof bridge.getSession ===
+        "function"
     ) {
       const existing =
-        sessions.get(q);
+        bridge.getSession(q);
 
-      return existing.session;
+      if (existing) {
+        activeQuality = q;
+
+        return {
+          ready: true,
+          quality: q,
+          session: existing,
+          alreadyLoaded: true
+        };
+      }
     }
-
 
     /*
-     * Share concurrent loading.
+     * Lazy initialization.
+     *
+     * The model is loaded here,
+     * only when Enhance is actually used.
      */
     if (
-      loading.has(q)
+      typeof bridge.createSession !==
+      "function"
     ) {
-      return await loading.get(q);
-    }
-
-
-    const promise =
-      (async () => {
-        const model =
-          getModel(q);
-
-
-        if (
-          !checkTier(model)
-        ) {
-          throw new Error(
-            `${q} membutuhkan akses VVIP.`
-          );
-        }
-
-
-        const url =
-          getModelURL(q);
-
-
-        if (!url) {
-          throw new Error(
-            `URL model ${q} belum tersedia.`
-          );
-        }
-
-
-        await initRuntime();
-
-
-        console.log(
-          `[FIDELIS] Loading ${q} model...`
-        );
-
-
-        const modelData =
-          await loadBinary(
-            q,
-            {
-              onProgress:
-                options.onProgress,
-
-              signal:
-                options.signal
-            }
-          );
-
-
-        if (
-          !modelData ||
-          !modelData.byteLength
-        ) {
-          throw new Error(
-            `Binary model ${q} kosong.`
-          );
-        }
-
-
-        console.log(
-          `[FIDELIS] Model ${q} loaded:`,
-          Math.round(
-            modelData.byteLength /
-              1024 /
-              1024 *
-              10
-          ) / 10,
-          "MB"
-        );
-
-
-        /*
-         * IMPORTANT:
-         *
-         * We create the ONNX session here,
-         * then store the actual session per quality.
-         *
-         * This prevents Standard/High
-         * session collisions.
-         */
-        if (
-          !window.FidelisRuntime ||
-          typeof window.FidelisRuntime.createSession !==
-            "function"
-        ) {
-          throw new Error(
-            "FidelisRuntime.createSession tidak tersedia."
-          );
-        }
-
-
-        const session =
-          await window.FidelisRuntime.createSession(
-            modelData,
-            {
-              model
-            }
-          );
-
-
-        if (!session) {
-          throw new Error(
-            `ONNX session ${q} gagal dibuat.`
-          );
-        }
-
-
-        const info = {
-          quality: q,
-          model,
-          session,
-          createdAt:
-            Date.now(),
-
-          inputNames:
-            Array.from(
-              session.inputNames ||
-                []
-            ),
-
-          outputNames:
-            Array.from(
-              session.outputNames ||
-                []
-            ),
-
-          inputMetadata:
-            session.inputMetadata ||
-            null,
-
-          outputMetadata:
-            session.outputMetadata ||
-            null,
-
-          backend:
-            window.FidelisRuntime &&
-            typeof window.FidelisRuntime.getBackend ===
-              "function"
-              ? window.FidelisRuntime.getBackend()
-              : null
-        };
-
-
-        sessions.set(
-          q,
-          info
-        );
-
-
-        console.log(
-          `[FIDELIS] ${q} session ready.`
-        );
-
-        console.log(
-          "[FIDELIS] Input:",
-          info.inputNames
-        );
-
-        console.log(
-          "[FIDELIS] Output:",
-          info.outputNames
-        );
-
-
-        return session;
-      })();
-
-
-    loading.set(
-      q,
-      promise
-    );
-
-
-    try {
-      return await promise;
-    } finally {
-      loading.delete(q);
-    }
-  }
-
-
-  async function run(
-    imageData,
-    quality = "standard",
-    options = {}
-  ) {
-    const q =
-      normalizeQuality(quality);
-
-
-    if (!imageData) {
       throw new Error(
-        "ImageData kosong."
+        "FidelisAIModelBridge.createSession tidak tersedia."
       );
     }
 
+    console.log(
+      `[FIDELIS] Preparing ${q} AI pipeline...`
+    );
 
-    /*
-     * Ensure session exists.
-     */
     const session =
-      sessions.has(q)
-        ? sessions.get(q).session
-        : await createSession(
-            q,
-            options
-          );
+      await bridge.createSession(
+        q,
+        {
+          onProgress:
+            options.onProgress,
 
+          signal:
+            options.signal
+        }
+      );
 
     if (!session) {
       throw new Error(
-        `Session ${q} tidak tersedia.`
+        `AI session ${q} gagal dibuat.`
       );
     }
 
-
-    const info =
-      sessions.get(q);
-
-
-    const model =
-      info &&
-      info.model
-        ? info.model
-        : getModel(q);
-
-
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT call the global
-     * FidelisAIInference.run()
-     * because that can use another
-     * quality's session.
-     *
-     * We create the tensor and execute
-     * THIS session directly.
-     */
-    if (
-      !window.FidelisAIInference
-    ) {
-      throw new Error(
-        "FidelisAIInference tidak tersedia."
-      );
-    }
-
-
-    if (
-      typeof window.FidelisAIInference.imageToTensor !==
-      "function"
-    ) {
-      throw new Error(
-        "FidelisAIInference.imageToTensor tidak tersedia."
-      );
-    }
-
-
-    const tensor =
-      window.FidelisAIInference.imageToTensor(
-        imageData,
-        model
-      );
-
-
-    const inputName =
-      info &&
-      info.inputNames &&
-      info.inputNames.length
-        ? info.inputNames[0]
-        : session.inputNames[0];
-
-
-    const outputName =
-      info &&
-      info.outputNames &&
-      info.outputNames.length
-        ? info.outputNames[0]
-        : session.outputNames[0];
-
-
-    if (!inputName) {
-      throw new Error(
-        `Model ${q} tidak mempunyai input name.`
-      );
-    }
-
-
-    if (!outputName) {
-      throw new Error(
-        `Model ${q} tidak mempunyai output name.`
-      );
-    }
-
-
-    const feeds = {};
-
-    feeds[inputName] =
-      tensor;
-
+    activeQuality =
+      q;
 
     console.log(
-      `[FIDELIS] ${q} inference`
+      `[FIDELIS] ${q} AI pipeline ready.`
     );
-
-    console.log(
-      "[FIDELIS] Input shape:",
-      tensor.dims
-    );
-
-
-    const started =
-      performance.now();
-
-
-    const outputs =
-      await session.run(
-        feeds
-      );
-
-
-    const elapsed =
-      performance.now() -
-      started;
-
-
-    const output =
-      outputs[outputName];
-
-
-    if (!output) {
-      throw new Error(
-        `Model ${q} tidak menghasilkan output.`
-      );
-    }
-
-
-    console.log(
-      "[FIDELIS] Output shape:",
-      output.dims
-    );
-
-
-    console.log(
-      `[FIDELIS] Inference time: ${Math.round(elapsed)} ms`
-    );
-
-
-    /*
-     * Convert output using the same model
-     * configuration.
-     */
-    const canvas =
-      window.FidelisAIInference.tensorToCanvas(
-        output,
-        {
-          model
-        }
-      );
-
-
-    if (!canvas) {
-      throw new Error(
-        "Output canvas gagal dibuat."
-      );
-    }
-
 
     return {
-      canvas,
-
-      width:
-        canvas.width,
-
-      height:
-        canvas.height,
-
-      scale:
-        model.scale,
-
-      model,
-
+      ready: true,
       quality: q,
-
-      aiProcessed:
-        true,
-
-      fallback:
-        false,
-
-      engine:
-        "Real-ESRGAN ONNX",
-
-      backend:
-        info.backend,
-
-      inputShape:
-        Array.from(
-          tensor.dims
-        ),
-
-      outputShape:
-        Array.from(
-          output.dims
-        ),
-
-      inferenceTime:
-        Math.round(
-          elapsed
-        )
+      session,
+      alreadyLoaded: false
     };
   }
 
 
-  function getSession(
-    quality
+  function imageToImageData(
+    source
   ) {
+    if (
+      !source
+    ) {
+      throw new Error(
+        "Source image kosong."
+      );
+    }
+
+    if (
+      source instanceof ImageData
+    ) {
+      return source;
+    }
+
+    if (
+      source instanceof HTMLCanvasElement
+    ) {
+      const ctx =
+        source.getContext(
+          "2d",
+          {
+            willReadFrequently:
+              true
+          }
+        );
+
+      if (!ctx) {
+        throw new Error(
+          "Canvas context tidak tersedia."
+        );
+      }
+
+      return ctx.getImageData(
+        0,
+        0,
+        source.width,
+        source.height
+      );
+    }
+
+    if (
+      source instanceof HTMLImageElement ||
+      source instanceof HTMLVideoElement
+    ) {
+      const width =
+        source.videoWidth ||
+        source.naturalWidth ||
+        source.width;
+
+      const height =
+        source.videoHeight ||
+        source.naturalHeight ||
+        source.height;
+
+      if (
+        !width ||
+        !height
+      ) {
+        throw new Error(
+          "Ukuran media tidak valid."
+        );
+      }
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        width;
+
+      canvas.height =
+        height;
+
+      const ctx =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently:
+              true
+          }
+        );
+
+      if (!ctx) {
+        throw new Error(
+          "Canvas context tidak tersedia."
+        );
+      }
+
+      ctx.drawImage(
+        source,
+        0,
+        0,
+        width,
+        height
+      );
+
+      return ctx.getImageData(
+        0,
+        0,
+        width,
+        height
+      );
+    }
+
+    throw new Error(
+      "Format image source tidak didukung."
+    );
+  }
+
+
+  async function processImage(
+    source,
+    quality = "standard",
+    options = {}
+  ) {
+    if (
+      processing
+    ) {
+      throw new Error(
+        "AI sedang memproses gambar."
+      );
+    }
+
+    processing =
+      true;
+
     const q =
-      normalizeQuality(quality);
+      normalizeQuality(
+        quality
+      );
 
-    const info =
-      sessions.get(q);
+    try {
+      /*
+       * Convert source into ImageData.
+       */
+      const imageData =
+        imageToImageData(
+          source
+        );
 
-    return info
-      ? info.session
-      : null;
+      if (
+        !imageData ||
+        !imageData.width ||
+        !imageData.height
+      ) {
+        throw new Error(
+          "ImageData tidak valid."
+        );
+      }
+
+      console.log(
+        "[FIDELIS] Input image:",
+        imageData.width,
+        "x",
+        imageData.height
+      );
+
+      /*
+       * Load runtime + model + ONNX session.
+       */
+      await ensureReady(
+        q,
+        options
+      );
+
+      /*
+       * Run actual AI inference.
+       */
+      const bridge =
+        getBridge();
+
+      const result =
+        await bridge.run(
+          imageData,
+          q,
+          options
+        );
+
+      if (
+        !result
+      ) {
+        throw new Error(
+          "AI pipeline tidak menghasilkan result."
+        );
+      }
+
+      if (
+        result.fallback
+      ) {
+        throw new Error(
+          "AI fallback terdeteksi. FIDELIS membutuhkan AI inference nyata."
+        );
+      }
+
+      if (
+        result.aiProcessed !==
+        true
+      ) {
+        throw new Error(
+          "AI inference tidak terkonfirmasi."
+        );
+      }
+
+      if (
+        !result.canvas
+      ) {
+        throw new Error(
+          "AI tidak menghasilkan canvas."
+        );
+      }
+
+      console.log(
+        "[FIDELIS] AI processing complete."
+      );
+
+      console.log(
+        "[FIDELIS] Output:",
+        result.canvas.width,
+        "x",
+        result.canvas.height
+      );
+
+      return {
+        ...result,
+
+        quality:
+          q,
+
+        aiProcessed:
+          true,
+
+        fallback:
+          false,
+
+        engine:
+          result.engine ||
+          "Real-ESRGAN ONNX",
+
+        inputWidth:
+          imageData.width,
+
+        inputHeight:
+          imageData.height,
+
+        outputWidth:
+          result.canvas.width,
+
+        outputHeight:
+          result.canvas.height
+      };
+
+    } finally {
+      processing =
+        false;
+    }
   }
 
 
   function getStatus() {
-    const models = {};
+    let bridgeStatus =
+      null;
 
-    for (
-      const [
-        quality,
-        info
-      ] of sessions.entries()
-    ) {
-      models[quality] = {
-        loaded:
-          true,
+    try {
+      const bridge =
+        getBridge();
 
-        createdAt:
-          info.createdAt,
-
-        inputNames:
-          info.inputNames,
-
-        outputNames:
-          info.outputNames,
-
-        inputMetadata:
-          info.inputMetadata,
-
-        outputMetadata:
-          info.outputMetadata,
-
-        backend:
-          info.backend
-      };
+      if (
+        typeof bridge.getStatus ===
+        "function"
+      ) {
+        bridgeStatus =
+          bridge.getStatus();
+      }
+    } catch (error) {
+      bridgeStatus =
+        null;
     }
 
-
     return {
-      loadedSessions:
-        Object.keys(models),
+      ready:
+        !!bridgeStatus &&
+        bridgeStatus.count > 0,
 
-      loading:
-        Array.from(
-          loading.keys()
-        ),
+      processing,
 
-      count:
-        sessions.size,
+      activeQuality,
 
-      models
+      bridge:
+        bridgeStatus
     };
+  }
+
+
+  async function preload(
+    quality = "standard",
+    options = {}
+  ) {
+    return await ensureReady(
+      quality,
+      options
+    );
   }
 
 
   async function dispose(
     quality
   ) {
-    const q =
-      normalizeQuality(quality);
+    const bridge =
+      getBridge();
 
-
-    const info =
-      sessions.get(q);
-
-
-    if (!info) {
+    if (
+      typeof bridge.dispose !==
+      "function"
+    ) {
       return false;
     }
 
-
-    try {
-      if (
-        info.session &&
-        typeof info.session.release ===
-          "function"
-      ) {
-        await info.session.release();
-      }
-    } catch (error) {
-      console.warn(
-        `[FIDELIS] Failed releasing ${q} session:`,
-        error
-      );
-    }
-
-
-    sessions.delete(q);
-
-    return true;
+    return await bridge.dispose(
+      normalizeQuality(
+        quality
+      )
+    );
   }
 
 
   async function disposeAll() {
-    const qualities =
-      Array.from(
-        sessions.keys()
-      );
+    const bridge =
+      getBridge();
 
-
-    for (
-      const quality of qualities
+    if (
+      typeof bridge.disposeAll !==
+      "function"
     ) {
-      await dispose(
-        quality
-      );
+      return false;
     }
 
-
-    sessions.clear();
-
-    return true;
+    return await bridge.disposeAll();
   }
 
 
-  function clear() {
-    sessions.clear();
-    loading.clear();
-  }
-
-
-  window.FidelisAIModelBridge = {
-    createSession,
-    run,
-    getSession,
-    getModel,
-    getModelURL,
+  window.FidelisAIImagePipeline = {
+    processImage,
+    ensureReady,
+    preload,
     getStatus,
     dispose,
     disposeAll,
-    clear
+    normalizeQuality
   };
 
 
   console.log(
-    "[FIDELIS] AI Model Bridge V2 loaded."
+    "[FIDELIS] AI Image Pipeline V3 loaded."
   );
 })();
