@@ -2,21 +2,13 @@
   "use strict";
 
   /*
-   * FIDELIS AI PIPELINE ROUTER
+   * FIDELIS PIPELINE ROUTER
    *
-   * This file is intentionally thin.
+   * Semua pemrosesan gambar AI
+   * diarahkan ke:
    *
-   * Router:
-   *   ↓
-   * Image Pipeline:
-   *   ↓
-   * Model Bridge:
-   *   ↓
-   * ONNX Runtime:
-   *   ↓
-   * Real-ESRGAN
+   * FidelisAIImagePipeline
    */
-
 
   function normalizeQuality(
     quality
@@ -31,41 +23,29 @@
       );
     }
 
-    const q =
+    const value =
       String(
         quality || "standard"
       ).toLowerCase();
 
     if (
-      q === "basic" ||
-      q === "free"
-    ) {
-      return "standard";
-    }
-
-    if (
-      q === "premium"
-    ) {
-      return "high";
-    }
-
-    if (
-      q === "4x" ||
-      q === "4×"
+      value === "ultra" ||
+      value === "vvip" ||
+      value === "4k"
     ) {
       return "ultra";
     }
 
     if (
-      q === "high" ||
-      q === "ultra"
+      value === "high" ||
+      value === "hq" ||
+      value === "hd"
     ) {
-      return q;
+      return "high";
     }
 
     return "standard";
   }
-
 
   function getPipeline() {
     if (
@@ -76,23 +56,13 @@
       );
     }
 
-    if (
-      typeof window.FidelisAIImagePipeline.processImage !==
-      "function"
-    ) {
-      throw new Error(
-        "FidelisAIImagePipeline.processImage tidak tersedia."
-      );
-    }
-
     return window.FidelisAIImagePipeline;
   }
 
-
   async function processImage(
     source,
-    quality = "standard",
-    options = {}
+    quality,
+    options
   ) {
     const pipeline =
       getPipeline();
@@ -103,133 +73,115 @@
       );
 
     console.log(
-      `[FIDELIS] Router → ${q}`
+      "[FIDELIS ROUTER] Processing:",
+      q
     );
-
-    /*
-     * Forward progress callback.
-     */
-    const pipelineOptions = {
-      ...options,
-
-      onProgress:
-        typeof options.onProgress ===
-        "function"
-          ? options.onProgress
-          : undefined
-    };
 
     const result =
       await pipeline.processImage(
         source,
         q,
-        pipelineOptions
+        options || {}
       );
 
+    /*
+     * Hard validation.
+     *
+     * Tidak boleh lolos kalau ternyata
+     * cuma sharpen/filter biasa.
+     */
     if (
-      !result
+      !result ||
+      result.aiProcessed !== true
     ) {
       throw new Error(
-        "AI Router tidak menerima hasil dari Image Pipeline."
+        "FIDELIS: AI processing tidak terkonfirmasi."
       );
     }
 
     if (
-      result.fallback
+      result.fallback === true
     ) {
       throw new Error(
-        "AI Router mendeteksi fallback."
+        "FIDELIS: fallback processing ditolak."
       );
     }
 
-    if (
-      result.aiProcessed !==
-      true
-    ) {
+    if (!result.canvas) {
       throw new Error(
-        "AI Router: hasil bukan AI processing."
+        "FIDELIS: canvas hasil tidak tersedia."
       );
     }
 
-    return {
-      ...result,
-
-      quality:
-        q,
-
-      aiProcessed:
-        true,
-
-      fallback:
-        false
-    };
+    return result;
   }
 
-
-  async function ensureReady(
-    quality = "standard",
-    options = {}
+  async function process(
+    source,
+    quality,
+    options
   ) {
-    const pipeline =
-      getPipeline();
-
-    if (
-      typeof pipeline.ensureReady !==
-      "function"
-    ) {
-      throw new Error(
-        "FidelisAIImagePipeline.ensureReady tidak tersedia."
-      );
-    }
-
-    return await pipeline.ensureReady(
-      normalizeQuality(
-        quality
-      ),
-      options
-    );
-  }
-
-
-  async function preload(
-    quality = "standard",
-    options = {}
-  ) {
-    return await ensureReady(
+    return processImage(
+      source,
       quality,
       options
     );
   }
 
+  async function enhance(
+    source,
+    quality,
+    options
+  ) {
+    return processImage(
+      source,
+      quality,
+      options
+    );
+  }
+
+  async function ensureReady(
+    quality,
+    options
+  ) {
+    const pipeline =
+      getPipeline();
+
+    return pipeline.ensureReady(
+      normalizeQuality(
+        quality
+      ),
+      options || {}
+    );
+  }
+
+  async function preload(
+    quality
+  ) {
+    const pipeline =
+      getPipeline();
+
+    return pipeline.preload(
+      normalizeQuality(
+        quality
+      )
+    );
+  }
 
   function getStatus() {
     try {
       const pipeline =
         getPipeline();
 
-      if (
-        typeof pipeline.getStatus ===
-        "function"
-      ) {
-        return pipeline.getStatus();
-      }
-
+      return pipeline.getStatus();
     } catch (error) {
       return {
-        ready:
-          false,
-
+        ready: false,
         error:
           error.message
       };
     }
-
-    return {
-      ready:
-        false
-    };
   }
-
 
   async function dispose(
     quality
@@ -237,56 +189,42 @@
     const pipeline =
       getPipeline();
 
-    if (
-      typeof pipeline.dispose !==
-      "function"
-    ) {
-      return false;
-    }
-
-    return await pipeline.dispose(
+    return pipeline.dispose(
       normalizeQuality(
         quality
       )
     );
   }
 
-
   async function disposeAll() {
     const pipeline =
       getPipeline();
 
-    if (
-      typeof pipeline.disposeAll !==
-      "function"
-    ) {
-      return false;
-    }
-
-    return await pipeline.disposeAll();
+    return pipeline.disposeAll();
   }
 
-
-  /*
-   * Public API.
-   *
-   * This is the object that
-   * image-ai.js should call.
-   */
   window.FidelisPipelineRouter = {
     processImage,
-    process: processImage,
-    enhance: processImage,
+
+    process,
+
+    enhance,
+
     ensureReady,
+
     preload,
+
     getStatus,
+
     dispose,
+
     disposeAll,
+
     normalizeQuality
   };
 
-
   console.log(
-    "[FIDELIS] AI Pipeline Router V3 loaded."
+    "%cFIDELIS Pipeline Router loaded.",
+    "color:#a78bfa;font-weight:bold;"
   );
 })();
