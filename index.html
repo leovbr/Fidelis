@@ -48,7 +48,11 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
 
   </header>  <!-- =====================================================
        MAIN
-       ===================================================== -->  <main class="container"><section class="hero">
+       ===================================================== -->  <main class="container"><!-- ===================================================
+     HERO
+     =================================================== -->
+
+<section class="hero">
 
   <h1>
     Enhance Your Photos.
@@ -117,6 +121,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
   <div class="section-header">
 
     <div>
+
       <span class="eyebrow">
         PREVIEW
       </span>
@@ -124,6 +129,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
       <h2>
         Your Media
       </h2>
+
     </div>
 
   </div>
@@ -152,6 +158,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
   <div class="section-header">
 
     <div>
+
       <span class="eyebrow">
         AI ENGINE
       </span>
@@ -159,6 +166,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
       <h2>
         Enhancement Quality
       </h2>
+
     </div>
 
   </div>
@@ -311,6 +319,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
   <div class="section-header">
 
     <div>
+
       <span class="eyebrow">
         RESULT
       </span>
@@ -318,6 +327,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
       <h2>
         Enhanced Media
       </h2>
+
     </div>
 
   </div>
@@ -385,7 +395,6 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
 
   <div
     style="
-      font-family:inherit;
       font-size:15px;
       font-weight:700;
       margin-bottom:12px;
@@ -432,6 +441,75 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
 
 </section>
 
+
+<!-- ===================================================
+     DIRECT ONNX DIAGNOSTIC
+     =================================================== -->
+
+<section
+  id="directOnnxDiagnostic"
+  style="
+    margin:32px 0;
+    padding:20px;
+    border:1px solid rgba(52,211,153,.35);
+    border-radius:16px;
+    background:#09090f;
+    color:#e8e8f0;
+    font-family:monospace;
+    font-size:13px;
+    line-height:1.6;
+    overflow:hidden;
+  "
+>
+
+  <div
+    style="
+      font-size:15px;
+      font-weight:700;
+      margin-bottom:12px;
+      color:#ffffff;
+    "
+  >
+    FIDELIS DIRECT ONNX TEST
+  </div>
+
+  <div
+    id="directOnnxStatus"
+    style="margin-bottom:12px;"
+  >
+    ⏳ Waiting for ONNX Runtime...
+  </div>
+
+  <pre
+    id="directOnnxOutput"
+    style="
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+      max-height:700px;
+      overflow:auto;
+    "
+  ></pre>
+
+  <button
+    type="button"
+    id="directOnnxButton"
+    style="
+      margin-top:16px;
+      padding:10px 14px;
+      border:1px solid rgba(52,211,153,.5);
+      border-radius:10px;
+      background:#12121c;
+      color:#ffffff;
+      cursor:pointer;
+      font-family:inherit;
+    "
+  >
+    Run Direct ONNX Test Again
+  </button>
+
+</section>
+
   </main>  <!-- =====================================================
        FOOTER
        ===================================================== -->  <footer class="footer"><p>
@@ -455,44 +533,92 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
        ===================================================== -->  <script src="js/ai-runtime.js"></script>  <!-- =====================================================
        RUNTIME DIAGNOSTIC
        ===================================================== -->  <script>
+
   (function () {
+
     "use strict";
 
     const statusEl =
-      document.getElementById("runtimeDiagnosticStatus");
+      document.getElementById(
+        "runtimeDiagnosticStatus"
+      );
 
     const outputEl =
-      document.getElementById("runtimeDiagnosticOutput");
+      document.getElementById(
+        "runtimeDiagnosticOutput"
+      );
 
     const buttonEl =
-      document.getElementById("runtimeDiagnosticButton");
+      document.getElementById(
+        "runtimeDiagnosticButton"
+      );
+
 
     function write(message) {
-      outputEl.textContent += message + "\n";
+
+      if (!outputEl) {
+        return;
+      }
+
+      outputEl.textContent +=
+        message + "\n";
     }
+
 
     function clear() {
-      outputEl.textContent = "";
+
+      if (outputEl) {
+        outputEl.textContent = "";
+      }
     }
+
 
     function setStatus(message) {
-      statusEl.textContent = message;
+
+      if (statusEl) {
+        statusEl.textContent =
+          message;
+      }
     }
 
-    function safeString(value) {
-      try {
-        if (value === undefined) return "undefined";
-        if (value === null) return "null";
 
-        if (typeof value === "object") {
-          return JSON.stringify(value, null, 2);
+    function safeString(value) {
+
+      try {
+
+        if (
+          value === undefined
+        ) {
+          return "undefined";
+        }
+
+        if (
+          value === null
+        ) {
+          return "null";
+        }
+
+        if (
+          typeof value === "object"
+        ) {
+
+          return JSON.stringify(
+            value,
+            null,
+            2
+          );
         }
 
         return String(value);
+
       } catch (_) {
+
         return String(value);
+
       }
+
     }
+
 
     async function testRuntime() {
 
@@ -502,16 +628,29 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         "⏳ Running ONNX Runtime diagnostic..."
       );
 
-      write("========================================");
-      write("FIDELIS ONNX RUNTIME DIAGNOSTIC");
-      write("========================================");
+
+      write(
+        "========================================"
+      );
+
+      write(
+        "FIDELIS ONNX RUNTIME DIAGNOSTIC"
+      );
+
+      write(
+        "========================================"
+      );
+
       write("");
 
-      /* ---------------------------------------------
-         1. Browser environment
-         --------------------------------------------- */
 
-      write("[1] BROWSER ENVIRONMENT");
+      /* =====================================
+         1 — BROWSER
+         ===================================== */
+
+      write(
+        "[1] BROWSER ENVIRONMENT"
+      );
 
       write(
         "User Agent: " +
@@ -522,39 +661,45 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         "WebGPU API: " +
         (
           "gpu" in navigator
-          ? "AVAILABLE"
-          : "NOT AVAILABLE"
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"
         )
       );
 
       write(
         "WebGL API: " +
         (
-          typeof WebGLRenderingContext !== "undefined"
-          ? "AVAILABLE"
-          : "NOT AVAILABLE"
+          typeof WebGLRenderingContext !==
+          "undefined"
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"
         )
       );
 
       write("");
 
-      /* ---------------------------------------------
-         2. FidelisRuntime existence
-         --------------------------------------------- */
 
-      write("[2] FIDELIS RUNTIME");
+      /* =====================================
+         2 — FIDELIS RUNTIME
+         ===================================== */
+
+      write(
+        "[2] FIDELIS RUNTIME"
+      );
 
       const runtime =
         window.FidelisRuntime;
+
 
       write(
         "FidelisRuntime: " +
         (
           runtime
-          ? "LOADED"
-          : "NOT LOADED"
+            ? "LOADED"
+            : "NOT LOADED"
         )
       );
+
 
       if (!runtime) {
 
@@ -571,19 +716,22 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         return;
       }
 
-      if (typeof runtime.getStatus === "function") {
+
+      if (
+        typeof runtime.getStatus ===
+        "function"
+      ) {
 
         try {
-
-          const runtimeStatus =
-            runtime.getStatus();
 
           write(
             "Runtime Status:"
           );
 
           write(
-            safeString(runtimeStatus)
+            safeString(
+              runtime.getStatus()
+            )
           );
 
         } catch (error) {
@@ -592,28 +740,35 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
             "Runtime Status Error: " +
             error.message
           );
+
         }
+
       }
 
       write("");
 
-      /* ---------------------------------------------
-         3. ORT object
-         --------------------------------------------- */
 
-      write("[3] ONNX RUNTIME LIBRARY");
+      /* =====================================
+         3 — ORT
+         ===================================== */
+
+      write(
+        "[3] ONNX RUNTIME LIBRARY"
+      );
 
       const ort =
         window.ort;
+
 
       write(
         "window.ort: " +
         (
           ort
-          ? "FOUND"
-          : "NOT FOUND"
+            ? "FOUND"
+            : "NOT FOUND"
         )
       );
+
 
       if (!ort) {
 
@@ -633,8 +788,9 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
           "ORT version: " +
           (
             ort.env &&
-            ort.env.version
-              ? ort.env.version
+            ort.env.versions &&
+            ort.env.versions.web
+              ? ort.env.versions.web
               : "UNKNOWN"
           )
         );
@@ -642,7 +798,8 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         write(
           "InferenceSession: " +
           (
-            typeof ort.InferenceSession === "function"
+            typeof ort.InferenceSession ===
+            "function"
               ? "AVAILABLE"
               : "NOT AVAILABLE"
           )
@@ -651,37 +808,42 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         write(
           "Tensor: " +
           (
-            typeof ort.Tensor === "function"
+            typeof ort.Tensor ===
+            "function"
               ? "AVAILABLE"
               : "NOT AVAILABLE"
           )
         );
+
       }
 
       write("");
 
-      /* ---------------------------------------------
-         4. Backend availability
-         --------------------------------------------- */
 
-      write("[4] BACKENDS");
+      /* =====================================
+         4 — BACKENDS
+         ===================================== */
+
+      write(
+        "[4] BACKENDS"
+      );
+
 
       if (
-        runtime &&
-        typeof runtime.getAvailableBackends === "function"
+        typeof runtime.getAvailableBackends ===
+        "function"
       ) {
 
         try {
-
-          const backends =
-            runtime.getAvailableBackends();
 
           write(
             "Available Backends:"
           );
 
           write(
-            safeString(backends)
+            safeString(
+              runtime.getAvailableBackends()
+            )
           );
 
         } catch (error) {
@@ -690,6 +852,7 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
             "Backend detection error: " +
             error.message
           );
+
         }
 
       } else {
@@ -697,18 +860,24 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         write(
           "getAvailableBackends(): NOT AVAILABLE"
         );
+
       }
 
       write("");
 
-      /* ---------------------------------------------
-         5. Runtime initialization
-         --------------------------------------------- */
 
-      write("[5] RUNTIME INITIALIZATION");
+      /* =====================================
+         5 — INIT
+         ===================================== */
+
+      write(
+        "[5] RUNTIME INITIALIZATION"
+      );
+
 
       if (
-        typeof runtime.init !== "function"
+        typeof runtime.init !==
+        "function"
       ) {
 
         write(
@@ -722,14 +891,17 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         return;
       }
 
+
       try {
 
         write(
           "Calling FidelisRuntime.init()..."
         );
 
+
         const initResult =
           await runtime.init();
+
 
         write(
           "INIT RESULT:"
@@ -739,14 +911,19 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
           safeString(initResult)
         );
 
+
         write(
           "Active backend: " +
           (
-            typeof runtime.getBackend === "function"
-              ? safeString(runtime.getBackend())
+            typeof runtime.getBackend ===
+            "function"
+              ? safeString(
+                  runtime.getBackend()
+                )
               : "UNKNOWN"
           )
         );
+
 
         write(
           "ORT after init: " +
@@ -757,51 +934,65 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
           )
         );
 
+
         if (window.ort) {
 
           write(
             "InferenceSession after init: " +
             (
-              typeof window.ort.InferenceSession === "function"
+              typeof window.ort.InferenceSession ===
+              "function"
                 ? "AVAILABLE"
                 : "NOT AVAILABLE"
             )
           );
+
 
           write(
             "Tensor after init: " +
             (
-              typeof window.ort.Tensor === "function"
+              typeof window.ort.Tensor ===
+              "function"
                 ? "AVAILABLE"
                 : "NOT AVAILABLE"
             )
           );
+
         }
 
+
         write("");
+
         write(
           "========================================"
         );
+
         write(
           "RUNTIME TEST SELESAI"
         );
+
         write(
           "========================================"
         );
+
 
         setStatus(
           "✅ ONNX RUNTIME INITIALIZATION BERHASIL"
         );
 
+
       } catch (error) {
 
         write("");
+
         write(
           "========================================"
         );
+
         write(
           "❌ RUNTIME INITIALIZATION GAGAL"
         );
+
         write(
           "========================================"
         );
@@ -809,7 +1000,8 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         write(
           "ERROR NAME: " +
           (
-            error && error.name
+            error &&
+            error.name
               ? error.name
               : "UNKNOWN"
           )
@@ -820,14 +1012,20 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         );
 
         write(
-          error && error.message
+          error &&
+          error.message
             ? error.message
             : String(error)
         );
 
-        if (error && error.stack) {
+
+        if (
+          error &&
+          error.stack
+        ) {
 
           write("");
+
           write(
             "STACK:"
           );
@@ -835,17 +1033,23 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
           write(
             error.stack
           );
+
         }
+
 
         setStatus(
           "❌ ONNX RUNTIME INITIALIZATION FAILED"
         );
+
       }
+
     }
+
 
     window.FidelisRuntimeDiagnostic = {
       run: testRuntime
     };
+
 
     if (buttonEl) {
 
@@ -853,19 +1057,24 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         "click",
         testRuntime
       );
+
     }
 
+
     if (
-      document.readyState === "loading"
+      document.readyState ===
+      "loading"
     ) {
 
       document.addEventListener(
         "DOMContentLoaded",
         function () {
+
           setTimeout(
             testRuntime,
             800
           );
+
         },
         { once: true }
       );
@@ -876,18 +1085,18 @@ content="FIDELIS — AI photo enhancement that preserves your original appearanc
         testRuntime,
         800
       );
+
     }
 
   })();
-  </script>  <script src="js/ai-inference.js"></script>  <script src="js/ai-model-bridge.js"></script>  <!-- =====================================================
+
+  </script>  <!-- =====================================================
+       DIRECT ONNX TEST
+       ===================================================== -->  <script src="js/direct-onnx-test.js"></script>  <!-- =====================================================
+       INFERENCE
+       ===================================================== -->  <script src="js/ai-inference.js"></script>  <script src="js/ai-model-bridge.js"></script>  <!-- =====================================================
        IMAGE PROCESSING
        ===================================================== -->  <script src="js/ai-tile-engine.js"></script>  <script src="js/ai-image-pipeline.js"></script>  <script src="js/ai-pipeline-router.js"></script>  <script src="js/ai-pipeline-test.js"></script>  <!-- =====================================================
        DIAGNOSTICS
        ===================================================== -->  <script src="js/ai-diagnostics.js"></script>  <script src="js/ai-model-live-test.js"></script>  <!-- =====================================================
-       FACE PRESERVATION
-       ===================================================== -->  <script src="js/face-guard.js"></script>  <script src="js/face-preservation.js"></script>  <!-- =====================================================
-       MEDIA PROCESSING
-       ===================================================== -->  <script src="js/image-ai.js"></script>  <script src="js/image.js"></script>  <script src="js/video.js"></script>  <!-- =====================================================
-       APP SERVICES
-       ===================================================== -->  <script src="js/storage.js"></script>  <script src="js/notifications.js"></script>  <script src="js/tier-manager.js"></script>  <script src="js/processing-engine.js"></script></body>
-</html>
+       FACE PRESERV
