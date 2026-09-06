@@ -25,7 +25,9 @@
         const model = window.FidelisRealESRGAN.get(q);
         if (model) return model;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.warn("[FIDELIS] RealESRGAN config error:", error);
+    }
 
     try {
       if (
@@ -35,16 +37,21 @@
         const model = window.FidelisModelRegistry.get(q);
         if (model) return model;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.warn("[FIDELIS] Model registry error:", error);
+    }
 
     try {
       if (
         window.FidelisAIModelConfig &&
         typeof window.FidelisAIModelConfig.get === "function"
       ) {
-        return window.FidelisAIModelConfig.get(q);
+        const model = window.FidelisAIModelConfig.get(q);
+        if (model) return model;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.warn("[FIDELIS] AI model config error:", error);
+    }
 
     return null;
   }
@@ -54,7 +61,7 @@
     const model = getModel(q);
 
     if (model && model.url) {
-      return model.url;
+      return String(model.url);
     }
 
     try {
@@ -62,11 +69,45 @@
         window.FidelisModelURL &&
         typeof window.FidelisModelURL.get === "function"
       ) {
-        return window.FidelisModelURL.get(q);
+        const url = window.FidelisModelURL.get(q);
+
+        if (url) {
+          return String(url);
+        }
       }
-    } catch (error) {}
+    } catch (error) {
+      console.warn("[FIDELIS] Model URL error:", error);
+    }
 
     return null;
+  }
+
+  function getURLCandidates(quality) {
+    const q = normalizeQuality(quality);
+    const primary = getURL(q);
+
+    const urls = [];
+
+    if (primary) {
+      urls.push(primary);
+    }
+
+    /*
+     * Hugging Face alternative:
+     * URL yang sama tanpa ?download=true.
+     */
+
+    if (primary) {
+      try {
+        const cleanURL = primary.split("?")[0];
+
+        if (!urls.includes(cleanURL)) {
+          urls.push(cleanURL);
+        }
+      } catch (error) {}
+    }
+
+    return urls;
   }
 
   function checkTier(model) {
@@ -96,7 +137,13 @@
     return true;
   }
 
-  function emitProgress(quality, progress, loaded, total, callback) {
+  function emitProgress(
+    quality,
+    progress,
+    loaded,
+    total,
+    callback
+  ) {
     const value = Math.max(
       0,
       Math.min(100, Math.round(progress))
@@ -130,27 +177,61 @@
     } catch (error) {}
   }
 
-  async function fetchModel(quality, url, options = {}) {
+  async function fetchModel(
+    quality,
+    url,
+    options = {}
+  ) {
     const q = normalizeQuality(quality);
 
     const controller = new AbortController();
 
     controllers.set(q, controller);
 
-    const response = await fetch(url, {
-      method: "GET",
-      cache: "force-cache",
-      signal: controller.signal,
-      headers: {
-        Accept: "application/octet-stream, application/octet-stream"
-      }
-    });
+    console.log(
+      `[FIDELIS] Fetching ${q} model:`,
+      url
+    );
+
+    let response;
+
+    try {
+      response = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        cache: "force-cache",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          Accept: "application/octet-stream"
+        }
+      });
+    } catch (error) {
+      const message =
+        error && error.message
+          ? error.message
+          : String(error);
+
+      throw new Error(
+        `Network/CORS error saat mengambil model ${q}. ` +
+        `URL: ${url} | ${message}`
+      );
+    }
 
     if (!response.ok) {
       throw new Error(
-        `Download model gagal. HTTP ${response.status}.`
+        `Download model ${q} gagal. HTTP ${response.status} ${response.statusText}.`
       );
     }
+
+    const contentType =
+      response.headers.get("content-type") || "";
+
+    console.log(
+      `[FIDELIS] ${q} response:`,
+      response.status,
+      contentType
+    );
 
     const contentLengthHeader =
       response.headers.get("content-length");
@@ -159,12 +240,10 @@
       ? Number(contentLengthHeader)
       : 0;
 
-    /*
-     * Kalau browser menyediakan ReadableStream,
-     * kita download sambil menghitung progress.
-     */
-
-    if (response.body && response.body.getReader) {
+    if (
+      response.body &&
+      typeof response.body.getReader === "function"
+    ) {
       const reader = response.body.getReader();
 
       const chunks = [];
@@ -173,9 +252,15 @@
       while (true) {
         const result = await reader.read();
 
-        if (result.done) break;
+        if (result.done) {
+          break;
+        }
 
         const chunk = result.value;
+
+        if (!chunk) {
+          continue;
+        }
 
         chunks.push(chunk);
 
@@ -186,15 +271,13 @@
         if (total > 0) {
           progress = (loaded / total) * 100;
         } else {
-          /*
-           * Content-Length kadang tidak tersedia.
-           * Tetap kasih progress indikatif.
-           */
           progress = Math.min(
             95,
-            5 + Math.log10(
-              Math.max(1, loaded)
-            ) * 15
+            5 +
+              Math.log10(
+                Math.max(1, loaded)
+              ) *
+                15
           );
         }
 
@@ -227,11 +310,8 @@
       return buffer.buffer;
     }
 
-    /*
-     * Fallback kalau ReadableStream tidak tersedia.
-     */
-
-    const buffer = await response.arrayBuffer();
+    const buffer =
+      await response.arrayBuffer();
 
     emitProgress(
       q,
@@ -244,12 +324,12 @@
     return buffer;
   }
 
-  async function load(quality = "standard", options = {}) {
+  async function load(
+    quality = "standard",
+    options = {}
+  ) {
     const q = normalizeQuality(quality);
 
-    /*
-     * Return cache kalau model sudah pernah di-load.
-     */
     if (
       cache.has(q) &&
       options.forceReload !== true
@@ -267,10 +347,6 @@
       return buffer;
     }
 
-    /*
-     * Kalau sedang didownload oleh request lain,
-     * ikut promise yang sama.
-     */
     if (
       loading.has(q) &&
       options.forceReload !== true
@@ -288,9 +364,9 @@
 
     checkTier(model);
 
-    const url = getURL(q);
+    const urls = getURLCandidates(q);
 
-    if (!url) {
+    if (!urls.length) {
       throw new Error(
         `URL model ${q} belum dikonfigurasi.`
       );
@@ -299,7 +375,7 @@
     const promise = (async () => {
       try {
         console.log(
-          `[FIDELIS] Downloading ${q} model...`
+          `[FIDELIS] Preparing ${q} model...`
         );
 
         emitProgress(
@@ -310,35 +386,82 @@
           options.onProgress
         );
 
-        const buffer = await fetchModel(
-          q,
-          url,
-          options
-        );
+        let buffer = null;
+        let lastError = null;
+
+        for (let i = 0; i < urls.length; i++) {
+          const url = urls[i];
+
+          try {
+            console.log(
+              `[FIDELIS] Download attempt ${i + 1}/${urls.length}:`,
+              url
+            );
+
+            buffer = await fetchModel(
+              q,
+              url,
+              options
+            );
+
+            if (
+              buffer &&
+              buffer.byteLength > 0
+            ) {
+              console.log(
+                `[FIDELIS] ${q} model downloaded successfully.`
+              );
+
+              break;
+            }
+
+            throw new Error(
+              "Model yang diterima kosong."
+            );
+          } catch (error) {
+            lastError = error;
+
+            console.warn(
+              `[FIDELIS] Attempt ${i + 1} failed:`,
+              error
+            );
+          }
+        }
 
         if (
           !buffer ||
           buffer.byteLength === 0
         ) {
-          throw new Error(
-            `Model ${q} yang diterima kosong.`
+          throw (
+            lastError ||
+            new Error(
+              `Model ${q} gagal didownload.`
+            )
           );
         }
 
         /*
          * Basic sanity check.
          *
-         * ONNX file biasanya diawali dengan struktur
-         * protobuf. Kita tidak memaksa magic bytes tertentu
-         * karena ONNX protobuf tidak punya signature sederhana
-         * seperti PNG/ZIP.
+         * ONNX adalah protobuf sehingga tidak memiliki
+         * magic bytes sederhana seperti PNG/JPG.
          */
+
+        if (buffer.byteLength < 1024) {
+          throw new Error(
+            `File model ${q} terlalu kecil (${buffer.byteLength} bytes).`
+          );
+        }
 
         cache.set(q, buffer);
 
         console.log(
           `[FIDELIS] ${q} model loaded: ` +
-          `${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`
+            `${(
+              buffer.byteLength /
+              1024 /
+              1024
+            ).toFixed(2)} MB`
         );
 
         return buffer;
@@ -371,10 +494,9 @@
   }
 
   function getLoadedSize(quality) {
-    const buffer =
-      cache.get(
-        normalizeQuality(quality)
-      );
+    const buffer = cache.get(
+      normalizeQuality(quality)
+    );
 
     return buffer
       ? buffer.byteLength
@@ -426,7 +548,9 @@
       controllers.get(q);
 
     if (controller) {
-      controller.abort();
+      try {
+        controller.abort();
+      } catch (error) {}
 
       controllers.delete(q);
 
@@ -461,9 +585,7 @@
   }
 
   function getLoadedModels() {
-    return Array.from(
-      cache.keys()
-    );
+    return Array.from(cache.keys());
   }
 
   function getTotalCacheSize() {
@@ -478,14 +600,11 @@
 
   window.FidelisModelLoaderV2 = {
     load,
-
     isLoaded,
     getLoadedSize,
-
     getStatus,
     getLoadedModels,
     getTotalCacheSize,
-
     cancel,
     clear,
     clearAll
